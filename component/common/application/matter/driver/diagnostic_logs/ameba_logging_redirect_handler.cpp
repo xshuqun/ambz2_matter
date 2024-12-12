@@ -145,7 +145,8 @@ bool AmebaErrorFormatter(char* buf, uint16_t bufSize, CHIP_ERROR err)
     log.ErrorPart   = (uint8_t)err.GetSdkCode();
     log.ErrorValue  = (uint8_t)err.GetValue();
 
-#if defined(CONFIG_ENABLE_AMEBA_SHORT_LOGGING) && (CONFIG_ENABLE_AMEBA_SHORT_LOGGING == 0)
+#if defined(CONFIG_ENABLE_AMEBA_SHORT_LOGGING) && (CONFIG_ENABLE_AMEBA_SHORT_LOGGING == 0) && \
+    defined(CHIP_CONFIG_ERROR_SOURCE) && (CHIP_CONFIG_ERROR_SOURCE==1)
 
     auto path_cstr = err.GetFile();
     int namelen = 0;
