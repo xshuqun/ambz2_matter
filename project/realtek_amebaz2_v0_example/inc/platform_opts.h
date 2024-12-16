@@ -474,6 +474,15 @@
 #define DCT_BEGIN_ADDR2 		(0x400000 - 0x1A000) // 0x3E6000 ~ 0x3ED000 : 24K
 #define MATTER_FACTORY_DATA     (0x3FF000)           // last 4KB of external flash - write protection is supported in this region
 
+/* For any upgrades in DCT */
+#define DCT_UPDATE_ENABLE		0
+#if defined(DCT_UPDATE_ENABLE) && DCT_UPDATE_ENABLE
+#define MODULE_NUM_OLD			13
+#define MODULE_NUM2_OLD			6
+#define DCT_BEGIN_ADDR_OLD		(0x400000 - 0x13000)
+#define DCT_BEGIN_ADDR2_OLD 	(0x400000 - 0x1A000)
+#endif
+
 /**
  * CONFIG_ENABLE_AMEBA_DLOG==1: to support diagnosic logs.
  * CONFIG_ENABLE_AMEBA_LFS==1: to enable Matter LittleFS.
