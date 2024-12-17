@@ -24,6 +24,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if defined(MBEDTLS_MD5_C)
 
 #include "mbedtls/md5.h"
@@ -473,3 +474,5 @@ fail:
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* MBEDTLS_MD5_C */
+
+#endif /* MBEDTLS_USE_ROM_API */

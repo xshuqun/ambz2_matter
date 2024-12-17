@@ -53,6 +53,7 @@
 #define ECDSA_VALIDATE( cond )        \
     MBEDTLS_INTERNAL_VALIDATE( cond )
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if defined(MBEDTLS_ECP_RESTARTABLE)
 
 /*
@@ -965,6 +966,8 @@ void mbedtls_ecdsa_free( mbedtls_ecdsa_context *ctx )
 
     mbedtls_ecp_keypair_free( ctx );
 }
+
+#endif /* MBEDTLS_USE_ROM_API */
 
 #if defined(MBEDTLS_ECP_RESTARTABLE)
 /*

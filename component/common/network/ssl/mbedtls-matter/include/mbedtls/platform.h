@@ -70,7 +70,9 @@ extern "C" {
 #if !defined(MBEDTLS_PLATFORM_NO_STD_FUNCTIONS)
 #include <stdio.h>
 #include <stdlib.h>
-#if defined(MBEDTLS_HAVE_TIME)
+#if (defined(CONFIG_SYSTEM_TIME64) && CONFIG_SYSTEM_TIME64)
+#include "time64.h"
+#else
 #include <time.h>
 #endif
 #if !defined(MBEDTLS_PLATFORM_STD_SNPRINTF)

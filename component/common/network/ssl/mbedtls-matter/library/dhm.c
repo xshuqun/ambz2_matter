@@ -60,6 +60,7 @@
 #define DHM_VALIDATE( cond )        \
     MBEDTLS_INTERNAL_VALIDATE( cond )
 
+#if !defined(MBEDTLS_USE_ROM_API)
 /*
  * helper to validate the mbedtls_mpi size and import it
  */
@@ -253,28 +254,6 @@ cleanup:
     if( ret != 0 && ret > -128 )
         ret = MBEDTLS_ERROR_ADD( MBEDTLS_ERR_DHM_MAKE_PARAMS_FAILED, ret );
     return( ret );
-}
-
-/*
- * Set prime modulus and generator
- */
-int mbedtls_dhm_set_group( mbedtls_dhm_context *ctx,
-                           const mbedtls_mpi *P,
-                           const mbedtls_mpi *G )
-{
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    DHM_VALIDATE_RET( ctx != NULL );
-    DHM_VALIDATE_RET( P != NULL );
-    DHM_VALIDATE_RET( G != NULL );
-
-    if( ( ret = mbedtls_mpi_copy( &ctx->P, P ) ) != 0 ||
-        ( ret = mbedtls_mpi_copy( &ctx->G, G ) ) != 0 )
-    {
-        return( MBEDTLS_ERROR_ADD( MBEDTLS_ERR_DHM_SET_GROUP_FAILED, ret ) );
-    }
-
-    ctx->len = mbedtls_mpi_size( &ctx->P );
-    return( 0 );
 }
 
 /*
@@ -715,5 +694,29 @@ exit:
 }
 
 #endif /* MBEDTLS_SELF_TEST */
+
+#endif /* MBEDTLS_USE_ROM_API */
+
+/*
+ * Set prime modulus and generator
+ */
+int mbedtls_dhm_set_group( mbedtls_dhm_context *ctx,
+                           const mbedtls_mpi *P,
+                           const mbedtls_mpi *G )
+{
+    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    DHM_VALIDATE_RET( ctx != NULL );
+    DHM_VALIDATE_RET( P != NULL );
+    DHM_VALIDATE_RET( G != NULL );
+
+    if( ( ret = mbedtls_mpi_copy( &ctx->P, P ) ) != 0 ||
+        ( ret = mbedtls_mpi_copy( &ctx->G, G ) ) != 0 )
+    {
+        return( MBEDTLS_ERROR_ADD( MBEDTLS_ERR_DHM_SET_GROUP_FAILED, ret ) );
+    }
+
+    ctx->len = mbedtls_mpi_size( &ctx->P );
+    return( 0 );
+}
 
 #endif /* MBEDTLS_DHM_C */

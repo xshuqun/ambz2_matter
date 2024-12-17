@@ -19,6 +19,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if defined(MBEDTLS_ASN1_PARSE_C)
 
 #include "mbedtls/asn1.h"
@@ -479,3 +480,5 @@ mbedtls_asn1_named_data *mbedtls_asn1_find_named_data( mbedtls_asn1_named_data *
 }
 
 #endif /* MBEDTLS_ASN1_PARSE_C */
+
+#endif /* MBEDTLS_USE_ROM_API */

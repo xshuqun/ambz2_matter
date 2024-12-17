@@ -67,6 +67,10 @@ extern "C" {
 typedef struct mbedtls_des_context
 {
     uint32_t sk[32];            /*!<  DES subkeys       */
+#ifdef RTL_HW_CRYPTO
+    unsigned char enc_key[MBEDTLS_DES_KEY_SIZE];
+    unsigned char dec_key[MBEDTLS_DES_KEY_SIZE];
+#endif
 }
 mbedtls_des_context;
 
@@ -76,6 +80,10 @@ mbedtls_des_context;
 typedef struct mbedtls_des3_context
 {
     uint32_t sk[96];            /*!<  3DES subkeys      */
+#ifdef RTL_HW_CRYPTO
+    unsigned char enc_key[MBEDTLS_DES_KEY_SIZE * 3];
+    unsigned char dec_key[MBEDTLS_DES_KEY_SIZE * 3];
+#endif
 }
 mbedtls_des3_context;
 

@@ -197,6 +197,13 @@ int mbedtls_ssl_ticket_setup( mbedtls_ssl_ticket_context *ctx,
  * authenticated data.
  */
 
+extern int mbedtls_cipher_auth_encrypt( mbedtls_cipher_context_t *ctx,
+                         const unsigned char *iv, size_t iv_len,
+                         const unsigned char *ad, size_t ad_len,
+                         const unsigned char *input, size_t ilen,
+                         unsigned char *output, size_t *olen,
+                         unsigned char *tag, size_t tag_len );
+
 int mbedtls_ssl_ticket_write( void *p_ticket,
                               const mbedtls_ssl_session *session,
                               unsigned char *start,
@@ -296,6 +303,13 @@ static mbedtls_ssl_ticket_key *ssl_ticket_select_key(
 /*
  * Load session ticket (see mbedtls_ssl_ticket_write for structure)
  */
+extern int mbedtls_cipher_auth_decrypt( mbedtls_cipher_context_t *ctx,
+									 const unsigned char *iv, size_t iv_len,
+									 const unsigned char *ad, size_t ad_len,
+									 const unsigned char *input, size_t ilen,
+									 unsigned char *output, size_t *olen,
+									 const unsigned char *tag, size_t tag_len );
+
 int mbedtls_ssl_ticket_parse( void *p_ticket,
                               mbedtls_ssl_session *session,
                               unsigned char *buf,

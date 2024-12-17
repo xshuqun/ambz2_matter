@@ -24,6 +24,12 @@
 
 #include "common.h"
 
+#ifdef RTL_HW_CRYPTO
+#include <hal_crypto.h>
+#endif
+
+#if !defined(MBEDTLS_USE_ROM_API) || (!(!defined(SUPPORT_HW_SSL_HMAC_SHA256) && defined(CONFIG_PLATFORM_8710C) && !defined(CONFIG_BUILD_SECURE)))
+
 #if defined(MBEDTLS_SHA256_C)
 
 #include "mbedtls/sha256.h"
@@ -79,6 +85,11 @@ void mbedtls_sha256_clone( mbedtls_sha256_context *dst,
  */
 int mbedtls_sha256_starts_ret( mbedtls_sha256_context *ctx, int is224 )
 {
+#if defined(SUPPORT_HW_SSL_HMAC_SHA256)
+    if(ctx->ssl_hmac) {
+        hal_crypto_sha2_256_init();
+    }
+#endif
     SHA256_VALIDATE_RET( ctx != NULL );
     SHA256_VALIDATE_RET( is224 == 0 || is224 == 1 );
 
@@ -284,6 +295,26 @@ int mbedtls_sha256_update_ret( mbedtls_sha256_context *ctx,
     if( ilen == 0 )
         return( 0 );
 
+#if defined(SUPPORT_HW_SSL_HMAC_SHA256)
+    if(ctx->ssl_hmac) {
+        if(ctx->ssl_hmac == 1) {
+            memcpy(ctx->buffer, input, ilen);
+            ctx->ssl_hmac = 2;
+        }
+        else if(ctx->ssl_hmac == 2) {
+            hal_crypto_sha2_256_init();
+            hal_crypto_sha2_256_update(ctx->buffer, 64);
+            hal_crypto_sha2_256_update(input, ilen);
+            ctx->ssl_hmac = 3;
+        }
+        else {
+            hal_crypto_sha2_256_update(input, ilen);
+        }
+
+        return 0;
+    }
+#endif
+
     left = ctx->total[0] & 0x3F;
     fill = 64 - left;
 
@@ -335,6 +366,13 @@ void mbedtls_sha256_update( mbedtls_sha256_context *ctx,
 int mbedtls_sha256_finish_ret( mbedtls_sha256_context *ctx,
                                unsigned char output[32] )
 {
+#if defined(SUPPORT_HW_SSL_HMAC_SHA256)
+    if(ctx->ssl_hmac) {
+        hal_crypto_sha2_256_final(output);
+        return 0;
+    }
+#endif
+
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     uint32_t used;
     uint32_t high, low;
@@ -583,3 +621,5 @@ exit:
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* MBEDTLS_SHA256_C */
+
+#endif /* MBEDTLS_USE_ROM_API SUPPORT_HW_SSL_HMAC_SHA256 CONFIG_PLATFORM_8710C CONFIG_BUILD_SECURE */

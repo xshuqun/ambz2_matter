@@ -62,6 +62,9 @@ typedef struct mbedtls_sha256_context
     unsigned char buffer[64];   /*!< The data block being processed. */
     int is224;                  /*!< Determines which function to use:
                                      0: Use SHA-256, or 1: Use SHA-224. */
+#if defined(SUPPORT_HW_SSL_HMAC_SHA256)
+    int ssl_hmac;
+#endif
 }
 mbedtls_sha256_context;
 

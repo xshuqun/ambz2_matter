@@ -34,6 +34,22 @@
 #define mbedtls_free       free
 #endif
 
+int mbedtls_asn1_write_tagged_string( unsigned char **p, unsigned char *start, int tag,
+    const char *text, size_t text_len )
+{
+    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    size_t len = 0;
+
+    MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_raw_buffer( p, start,
+        (const unsigned char *) text, text_len ) );
+
+    MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_len( p, start, len ) );
+    MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_tag( p, start, tag ) );
+
+    return( (int) len );
+}
+
+#if !defined(MBEDTLS_USE_ROM_API)
 int mbedtls_asn1_write_len( unsigned char **p, unsigned char *start, size_t len )
 {
     if( len < 0x80 )
@@ -270,21 +286,6 @@ int mbedtls_asn1_write_enum( unsigned char **p, unsigned char *start, int val )
     return( asn1_write_tagged_int( p, start, val, MBEDTLS_ASN1_ENUMERATED ) );
 }
 
-int mbedtls_asn1_write_tagged_string( unsigned char **p, unsigned char *start, int tag,
-    const char *text, size_t text_len )
-{
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    size_t len = 0;
-
-    MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_raw_buffer( p, start,
-        (const unsigned char *) text, text_len ) );
-
-    MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_len( p, start, len ) );
-    MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_tag( p, start, tag ) );
-
-    return( (int) len );
-}
-
 int mbedtls_asn1_write_utf8_string( unsigned char **p, unsigned char *start,
     const char *text, size_t text_len )
 {
@@ -482,4 +483,6 @@ mbedtls_asn1_named_data *mbedtls_asn1_store_named_data(
 
     return( cur );
 }
+#endif /* MBEDTLS_USE_ROM_API */
+
 #endif /* MBEDTLS_ASN1_WRITE_C */

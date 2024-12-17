@@ -61,6 +61,7 @@ int mbedtls_ecdh_can_do( mbedtls_ecp_group_id gid )
     return( 1 );
 }
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if !defined(MBEDTLS_ECDH_GEN_PUBLIC_ALT)
 /*
  * Generate public key (restartable version)
@@ -101,7 +102,11 @@ int mbedtls_ecdh_gen_public( mbedtls_ecp_group *grp, mbedtls_mpi *d, mbedtls_ecp
     ECDH_VALIDATE_RET( d != NULL );
     ECDH_VALIDATE_RET( Q != NULL );
     ECDH_VALIDATE_RET( f_rng != NULL );
+#if defined(MBEDTLS_BIGNUM_USE_S_ROM_API)
+    return mbedtls_ecp_gen_keypair( grp, d, Q, f_rng, p_rng );
+#else
     return( ecdh_gen_public_restartable( grp, d, Q, f_rng, p_rng, NULL ) );
+#endif /* MBEDTLS_BIGNUM_USE_S_ROM_API */
 }
 #endif /* !MBEDTLS_ECDH_GEN_PUBLIC_ALT */
 
@@ -191,49 +196,6 @@ void mbedtls_ecdh_init( mbedtls_ecdh_context *ctx )
 #endif
 }
 
-static int ecdh_setup_internal( mbedtls_ecdh_context_mbed *ctx,
-                                mbedtls_ecp_group_id grp_id )
-{
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-
-    ret = mbedtls_ecp_group_load( &ctx->grp, grp_id );
-    if( ret != 0 )
-    {
-        return( MBEDTLS_ERR_ECP_FEATURE_UNAVAILABLE );
-    }
-
-    return( 0 );
-}
-
-/*
- * Setup context
- */
-int mbedtls_ecdh_setup( mbedtls_ecdh_context *ctx, mbedtls_ecp_group_id grp_id )
-{
-    ECDH_VALIDATE_RET( ctx != NULL );
-
-#if defined(MBEDTLS_ECDH_LEGACY_CONTEXT)
-    return( ecdh_setup_internal( ctx, grp_id ) );
-#else
-    switch( grp_id )
-    {
-#if defined(MBEDTLS_ECDH_VARIANT_EVEREST_ENABLED)
-        case MBEDTLS_ECP_DP_CURVE25519:
-            ctx->point_format = MBEDTLS_ECP_PF_COMPRESSED;
-            ctx->var = MBEDTLS_ECDH_VARIANT_EVEREST;
-            ctx->grp_id = grp_id;
-            return( mbedtls_everest_setup( &ctx->ctx.everest_ecdh, grp_id ) );
-#endif
-        default:
-            ctx->point_format = MBEDTLS_ECP_PF_UNCOMPRESSED;
-            ctx->var = MBEDTLS_ECDH_VARIANT_MBEDTLS_2_0;
-            ctx->grp_id = grp_id;
-            ecdh_init_internal( &ctx->ctx.mbed_ecdh );
-            return( ecdh_setup_internal( &ctx->ctx.mbed_ecdh, grp_id ) );
-    }
-#endif
-}
-
 static void ecdh_free_internal( mbedtls_ecdh_context_mbed *ctx )
 {
     mbedtls_ecp_group_free( &ctx->grp );
@@ -246,18 +208,6 @@ static void ecdh_free_internal( mbedtls_ecdh_context_mbed *ctx )
     mbedtls_ecp_restart_free( &ctx->rs );
 #endif
 }
-
-#if defined(MBEDTLS_ECP_RESTARTABLE)
-/*
- * Enable restartable operations for context
- */
-void mbedtls_ecdh_enable_restart( mbedtls_ecdh_context *ctx )
-{
-    ECDH_VALIDATE( ctx != NULL );
-
-    ctx->restart_enabled = 1;
-}
-#endif
 
 /*
  * Free context
@@ -725,5 +675,63 @@ int mbedtls_ecdh_calc_secret( mbedtls_ecdh_context *ctx, size_t *olen,
     }
 #endif
 }
+
+#endif /* MBEDTLS_USE_ROM_API */
+
+
+static int ecdh_setup_internal( mbedtls_ecdh_context_mbed *ctx,
+                                mbedtls_ecp_group_id grp_id )
+{
+    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+
+    ret = mbedtls_ecp_group_load( &ctx->grp, grp_id );
+    if( ret != 0 )
+    {
+        return( MBEDTLS_ERR_ECP_FEATURE_UNAVAILABLE );
+    }
+
+    return( 0 );
+}
+
+/*
+ * Setup context
+ */
+int mbedtls_ecdh_setup( mbedtls_ecdh_context *ctx, mbedtls_ecp_group_id grp_id )
+{
+    ECDH_VALIDATE_RET( ctx != NULL );
+
+#if defined(MBEDTLS_ECDH_LEGACY_CONTEXT)
+    return( ecdh_setup_internal( ctx, grp_id ) );
+#else
+    switch( grp_id )
+    {
+#if defined(MBEDTLS_ECDH_VARIANT_EVEREST_ENABLED)
+        case MBEDTLS_ECP_DP_CURVE25519:
+            ctx->point_format = MBEDTLS_ECP_PF_COMPRESSED;
+            ctx->var = MBEDTLS_ECDH_VARIANT_EVEREST;
+            ctx->grp_id = grp_id;
+            return( mbedtls_everest_setup( &ctx->ctx.everest_ecdh, grp_id ) );
+#endif
+        default:
+            ctx->point_format = MBEDTLS_ECP_PF_UNCOMPRESSED;
+            ctx->var = MBEDTLS_ECDH_VARIANT_MBEDTLS_2_0;
+            ctx->grp_id = grp_id;
+            ecdh_init_internal( &ctx->ctx.mbed_ecdh );
+            return( ecdh_setup_internal( &ctx->ctx.mbed_ecdh, grp_id ) );
+    }
+#endif
+}
+
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+/*
+ * Enable restartable operations for context
+ */
+void mbedtls_ecdh_enable_restart( mbedtls_ecdh_context *ctx )
+{
+    ECDH_VALIDATE( ctx != NULL );
+
+    ctx->restart_enabled = 1;
+}
+#endif
 
 #endif /* MBEDTLS_ECDH_C */

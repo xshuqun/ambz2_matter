@@ -46,6 +46,12 @@
 
 #include <string.h>
 
+#if defined(MBEDTLS_BIGNUM_USE_S_ROM_API)
+#include "mbedtls/bignum_rom.h"
+#define mbedtls_mpi_safe_cond_assign         _mbedtls_mpi_safe_cond_assign
+#define mbedtls_mpi_safe_cond_swap           _mbedtls_mpi_safe_cond_swap
+#endif
+
 int mbedtls_ct_memcmp( const void *a,
                        const void *b,
                        size_t n )
@@ -546,6 +552,8 @@ cleanup:
  */
 __declspec(noinline)
 #endif
+
+#if !defined(MBEDTLS_USE_ROM_API)
 int mbedtls_mpi_safe_cond_assign( mbedtls_mpi *X,
                                   const mbedtls_mpi *Y,
                                   unsigned char assign )
@@ -613,6 +621,7 @@ int mbedtls_mpi_safe_cond_swap( mbedtls_mpi *X,
 cleanup:
     return( ret );
 }
+#endif /* MBEDTLS_USE_ROM_API */ 
 
 /*
  * Compare signed values in constant time

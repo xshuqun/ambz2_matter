@@ -27,6 +27,34 @@
 
 #include "common.h"
 
+#ifdef RTL_HW_CRYPTO
+#include <hal_crypto.h>
+#include "device_lock.h"
+
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+#if defined(__ICCARM__)
+extern void (__cmse_nonsecure_call *ns_device_mutex_lock)(uint32_t);
+extern void (__cmse_nonsecure_call *ns_device_mutex_unlock)(uint32_t);
+#else
+extern void __attribute__((cmse_nonsecure_call)) (*ns_device_mutex_lock)(uint32_t);
+extern void __attribute__((cmse_nonsecure_call)) (*ns_device_mutex_unlock)(uint32_t);
+#endif
+#define device_mutex_lock ns_device_mutex_lock
+#define device_mutex_unlock ns_device_mutex_unlock
+#endif
+
+#ifdef CONFIG_PLATFORM_8710C
+#include "crypto_api.h"
+#endif
+// fix 8710b name conflict
+#ifdef S1
+#undef S1
+#endif
+#ifdef S2
+#undef S2
+#endif
+#endif
+
 #if defined(MBEDTLS_SSL_TLS_C)
 
 #if defined(MBEDTLS_PLATFORM_C)
@@ -3929,14 +3957,31 @@ static int ssl_cookie_check_dummy( void *ctx,
 /*
  * Initialize an SSL context
  */
+#ifdef RTL_HW_CRYPTO
+extern int rtl_cryptoEngine_init(void);
+#endif
 void mbedtls_ssl_init( mbedtls_ssl_context *ssl )
 {
     memset( ssl, 0, sizeof( mbedtls_ssl_context ) );
+
+#ifdef RTL_HW_CRYPTO
+    if(rom_ssl_ram_map.use_hw_crypto_func)
+        rtl_cryptoEngine_init();
+#endif /* RTL_HW_CRYPTO */
 }
 
 /*
  * Setup an SSL context
  */
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+#if defined(__ICCARM__)
+extern void* (__cmse_nonsecure_call *ns_calloc)(size_t, size_t);
+extern void (__cmse_nonsecure_call *ns_free)(void *);
+#else
+extern void* __attribute__((cmse_nonsecure_call)) (*ns_calloc)(size_t, size_t);
+extern void __attribute__((cmse_nonsecure_call)) (*ns_free)(void *);
+#endif
+#endif
 
 int mbedtls_ssl_setup( mbedtls_ssl_context *ssl,
                        const mbedtls_ssl_config *conf )
@@ -3946,6 +3991,8 @@ int mbedtls_ssl_setup( mbedtls_ssl_context *ssl,
     size_t out_buf_len = MBEDTLS_SSL_OUT_BUFFER_LEN;
 
     ssl->conf = conf;
+
+    const size_t len = MBEDTLS_SSL_BUFFER_LEN;   //modify by Realtek, the macro may use ssl->conf->max_conten_len
 
     /*
      * Prepare base structures
@@ -3957,7 +4004,11 @@ int mbedtls_ssl_setup( mbedtls_ssl_context *ssl,
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     ssl->in_buf_len = in_buf_len;
 #endif
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+    ssl->in_buf = ns_calloc( 1, len );
+#else
     ssl->in_buf = mbedtls_calloc( 1, in_buf_len );
+#endif
     if( ssl->in_buf == NULL )
     {
         MBEDTLS_SSL_DEBUG_MSG( 1, ( "alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", in_buf_len ) );
@@ -3968,7 +4019,11 @@ int mbedtls_ssl_setup( mbedtls_ssl_context *ssl,
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     ssl->out_buf_len = out_buf_len;
 #endif
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+    ssl->out_buf = ns_calloc( 1, len );
+#else
     ssl->out_buf = mbedtls_calloc( 1, out_buf_len );
+#endif
     if( ssl->out_buf == NULL )
     {
         MBEDTLS_SSL_DEBUG_MSG( 1, ( "alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", out_buf_len ) );
@@ -3988,8 +4043,13 @@ int mbedtls_ssl_setup( mbedtls_ssl_context *ssl,
     return( 0 );
 
 error:
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+    ns_free( ssl->in_buf );
+    ns_free( ssl->out_buf );
+#else
     mbedtls_free( ssl->in_buf );
     mbedtls_free( ssl->out_buf );
+#endif
 
     ssl->conf = NULL;
 
@@ -4954,6 +5014,13 @@ int mbedtls_ssl_conf_max_frag_len( mbedtls_ssl_config *conf, unsigned char mfl_c
         return( MBEDTLS_ERR_SSL_BAD_INPUT_DATA );
     }
 
+    if(mfl_code == 0)
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+        return conf->max_content_len;
+#else
+        return MBEDTLS_SSL_MAX_CONTENT_LEN;
+#endif
+
     conf->mfl_code = mfl_code;
 
     return( 0 );
@@ -5171,6 +5238,28 @@ size_t mbedtls_ssl_get_input_max_frag_len( const mbedtls_ssl_context *ssl )
 
 size_t mbedtls_ssl_get_output_max_frag_len( const mbedtls_ssl_context *ssl )
 {
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+
+    size_t max_len_session;
+    if(ssl->conf->mfl_code == 0)
+        max_len = ssl->conf->max_content_len;
+    else
+        max_len = mfl_code_to_length[ssl->conf->mfl_code];
+
+    if( ssl->session_out != NULL){
+        if(ssl->session_out->mfl_code == 0)
+            max_len_session = ssl->conf->max_content_len;
+     else
+            max_len_session = mfl_code_to_length[ssl->session_out->mfl_code];
+    }
+    /*
+     * Check if a smaller max length was negotiated
+     */
+    if( max_len_session < max_len )
+    {
+        max_len = max_len_session;
+    }
+#else
     size_t max_len;
 
     /*
@@ -5191,6 +5280,7 @@ size_t mbedtls_ssl_get_output_max_frag_len( const mbedtls_ssl_context *ssl )
     {
         max_len = ssl_mfl_code_to_length( ssl->session_negotiate->mfl_code );
     }
+#endif
 
     return( max_len );
 }
@@ -6842,11 +6932,15 @@ void mbedtls_ssl_free( mbedtls_ssl_context *ssl )
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
         size_t out_buf_len = ssl->out_buf_len;
 #else
-        size_t out_buf_len = MBEDTLS_SSL_OUT_BUFFER_LEN;
+        size_t out_buf_len = MBEDTLS_SSL_BUFFER_LEN;
 #endif
 
         mbedtls_platform_zeroize( ssl->out_buf, out_buf_len );
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+        ns_free( ssl->out_buf );
+#else
         mbedtls_free( ssl->out_buf );
+#endif
         ssl->out_buf = NULL;
     }
 
@@ -6855,11 +6949,15 @@ void mbedtls_ssl_free( mbedtls_ssl_context *ssl )
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
         size_t in_buf_len = ssl->in_buf_len;
 #else
-        size_t in_buf_len = MBEDTLS_SSL_IN_BUFFER_LEN;
+        size_t in_buf_len = MBEDTLS_SSL_BUFFER_LEN;
 #endif
 
         mbedtls_platform_zeroize( ssl->in_buf, in_buf_len );
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+        ns_free( ssl->in_buf  );
+#else
         mbedtls_free( ssl->in_buf );
+#endif
         ssl->in_buf = NULL;
     }
 
@@ -7738,5 +7836,14 @@ exit:
 
 #endif /* MBEDTLS_SSL_PROTO_TLS1 || MBEDTLS_SSL_PROTO_TLS1_1 || \
           MBEDTLS_SSL_PROTO_TLS1_2 */
+
+int mbedtls_ssl_set_dynamic_max_content_len( mbedtls_ssl_config *conf, int len )
+{
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+    conf->max_content_len = len;
+#endif
+
+    return 0;
+}
 
 #endif /* MBEDTLS_SSL_TLS_C */

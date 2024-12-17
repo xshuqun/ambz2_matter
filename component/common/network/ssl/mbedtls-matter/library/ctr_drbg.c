@@ -24,6 +24,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API) || (defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1))
 #if defined(MBEDTLS_CTR_DRBG_C)
 
 #include "mbedtls/ctr_drbg.h"
@@ -31,9 +32,8 @@
 #include "mbedtls/error.h"
 
 #include <string.h>
-#include <platform_opts.h>
 
-#if (CONFIG_EXAMPLE_MATTER) && (CONFIG_ENABLE_MATTER_PRNG)
+#if (CONFIG_MATTER) && (CONFIG_ENABLE_MATTER_PRNG)
 #include <crypto_api.h>
 #include <device_lock.h>
 #endif
@@ -597,7 +597,7 @@ exit:
 int mbedtls_ctr_drbg_random( void *p_rng, unsigned char *output,
                              size_t output_len )
 {
-#if (CONFIG_EXAMPLE_MATTER) && (CONFIG_ENABLE_MATTER_PRNG)
+#if (CONFIG_MATTER) && (CONFIG_ENABLE_MATTER_PRNG)
     int ret = 0;
 
     device_mutex_lock(RT_DEV_LOCK_CRYPTO);
@@ -628,7 +628,7 @@ int mbedtls_ctr_drbg_random( void *p_rng, unsigned char *output,
     if( mbedtls_mutex_unlock( &ctx->mutex ) != 0 )
         return( MBEDTLS_ERR_THREADING_MUTEX_ERROR );
 #endif
-#endif /* CONFIG_EXAMPLE_MATTER */
+#endif /* CONFIG_MATTER */
 
     return( ret );
 }
@@ -920,3 +920,5 @@ int mbedtls_ctr_drbg_self_test( int verbose )
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* MBEDTLS_CTR_DRBG_C */
+
+#endif /* MBEDTLS_USE_ROM_API */

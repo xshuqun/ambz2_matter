@@ -1572,7 +1572,11 @@ read_record_header:
     else
 #endif
     {
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+        if( msg_len > ssl->conf->max_content_len )
+#else
         if( msg_len > MBEDTLS_SSL_IN_CONTENT_LEN )
+#endif
         {
             MBEDTLS_SSL_DEBUG_MSG( 1, ( "bad client hello message" ) );
             return( MBEDTLS_ERR_SSL_BAD_HS_CLIENT_HELLO );
@@ -2580,7 +2584,11 @@ static void ssl_write_ecjpake_kkpp_ext( mbedtls_ssl_context *ssl,
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     unsigned char *p = buf;
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+    const unsigned char *end = ssl->out_msg + ssl->conf->max_content_len;
+#else
     const unsigned char *end = ssl->out_msg + MBEDTLS_SSL_OUT_CONTENT_LEN;
+#endif
     size_t kkpp_len;
 
     *olen = 0;
@@ -3100,7 +3108,11 @@ static int ssl_write_certificate_request( mbedtls_ssl_context *ssl )
     uint16_t dn_size, total_dn_size; /* excluding length bytes */
     size_t ct_len, sa_len; /* including length bytes */
     unsigned char *buf, *p;
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek	
+    const unsigned char * const end = ssl->out_msg + ssl->conf->max_content_len;
+#else
     const unsigned char * const end = ssl->out_msg + MBEDTLS_SSL_OUT_CONTENT_LEN;
+#endif
     const mbedtls_x509_crt *crt;
     int authmode;
 
@@ -3354,6 +3366,12 @@ static int ssl_prepare_server_key_exchange( mbedtls_ssl_context *ssl,
         int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
         size_t len = 0;
 
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+        const unsigned char *end = ssl->out_msg + ssl->conf->max_content_len;
+#else
+        const unsigned char *end = ssl->out_msg + MBEDTLS_SSL_MAX_CONTENT_LEN;
+#endif
+
         ret = mbedtls_ecjpake_write_round_two(
             &ssl->handshake->ecjpake_ctx,
             ssl->out_msg + ssl->out_msglen,
@@ -3483,8 +3501,13 @@ curve_matching_done:
 
         if( ( ret = mbedtls_ecdh_make_params(
                   &ssl->handshake->ecdh_ctx, &len,
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+                  ssl->out_msg + ssl->out_msglen,
+                  ssl->conf->max_content_len - ssl->out_msglen,
+#else
                   ssl->out_msg + ssl->out_msglen,
                   MBEDTLS_SSL_OUT_CONTENT_LEN - ssl->out_msglen,
+#endif
                   ssl->conf->f_rng, ssl->conf->p_rng ) ) != 0 )
         {
             MBEDTLS_SSL_DEBUG_RET( 1, "mbedtls_ecdh_make_params", ret );
@@ -3669,12 +3692,37 @@ curve_matching_done:
          * after the call to ssl_prepare_server_key_exchange.
          * ssl_write_server_key_exchange also takes care of incrementing
          * ssl->out_msglen. */
+#if defined(CONFIG_BUILD_NONSECURE) && (CONFIG_BUILD_NONSECURE == 1) && defined(CONFIG_SSL_CLIENT_PRIVATE_IN_TZ) && (CONFIG_SSL_CLIENT_PRIVATE_IN_TZ == 1)
+        struct secure_mbedtls_pk_sign_param {
+            mbedtls_pk_context *ctx;
+            mbedtls_md_type_t md_alg;
+            unsigned char *hash;
+            size_t hash_len;
+            unsigned char *sig;
+            size_t *sig_len;
+            int (*f_rng)(void *, unsigned char *, size_t);
+            void *p_rng;
+        } param = {
+            mbedtls_ssl_own_key( ssl ),
+            md_alg,
+            hash,
+            hashlen,
+            ssl->out_msg + ssl->out_msglen + 2,
+            signature_len,
+            ssl->conf->f_rng,
+            ssl->conf->p_rng,
+        };
+
+        extern int NS_ENTRY secure_mbedtls_pk_sign(struct secure_mbedtls_pk_sign_param *param);
+        if( ( ret = secure_mbedtls_pk_sign( &param ) ) != 0 )
+#else
         if( ( ret = mbedtls_pk_sign( mbedtls_ssl_own_key( ssl ),
                                      md_alg, hash, hashlen,
                                      ssl->out_msg + ssl->out_msglen + 2,
                                      signature_len,
                                      ssl->conf->f_rng,
                                      ssl->conf->p_rng ) ) != 0 )
+#endif
         {
             MBEDTLS_SSL_DEBUG_RET( 1, "mbedtls_pk_sign", ret );
             return( ret );
@@ -4693,7 +4741,11 @@ static int ssl_write_new_session_ticket( mbedtls_ssl_context *ssl )
     if( ( ret = ssl->conf->f_ticket_write( ssl->conf->p_ticket,
                                 ssl->session_negotiate,
                                 ssl->out_msg + 10,
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+                                ssl->out_msg + ssl->conf->max_content_len,
+#else
                                 ssl->out_msg + MBEDTLS_SSL_OUT_CONTENT_LEN,
+#endif
                                 &tlen, &lifetime ) ) != 0 )
     {
         MBEDTLS_SSL_DEBUG_RET( 1, "mbedtls_ssl_ticket_write", ret );

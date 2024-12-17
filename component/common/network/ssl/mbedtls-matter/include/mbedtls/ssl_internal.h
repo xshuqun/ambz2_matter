@@ -193,6 +193,22 @@
 #define MBEDTLS_SSL_MAX_CID_EXPANSION        0
 #endif
 
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+#define MBEDTLS_SSL_BUFFER_LEN  ( ssl->conf->max_content_len               \
+                        + MBEDTLS_SSL_COMPRESSION_ADD               \
+                        + 29 /* counter + header + IV */    \
+                        + MBEDTLS_SSL_MAC_ADD                       \
+                        + MBEDTLS_SSL_PADDING_ADD                   \
+                        )
+#else
+#define MBEDTLS_SSL_BUFFER_LEN  ( MBEDTLS_SSL_MAX_CONTENT_LEN               \
+                        + MBEDTLS_SSL_COMPRESSION_ADD               \
+                        + 29 /* counter + header + IV */    \
+                        + MBEDTLS_SSL_MAC_ADD                       \
+                        + MBEDTLS_SSL_PADDING_ADD                   \
+                        )
+#endif
+
 #define MBEDTLS_SSL_PAYLOAD_OVERHEAD ( MBEDTLS_SSL_COMPRESSION_ADD +    \
                                        MBEDTLS_MAX_IV_LENGTH +          \
                                        MBEDTLS_SSL_MAC_ADD +            \
@@ -782,7 +798,7 @@ struct mbedtls_ssl_transform
 #if defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
     uint8_t in_cid_len;
     uint8_t out_cid_len;
-    unsigned char in_cid [ MBEDTLS_SSL_CID_OUT_LEN_MAX ];
+    unsigned char in_cid [ MBEDTLS_SSL_CID_IN_LEN_MAX ];
     unsigned char out_cid[ MBEDTLS_SSL_CID_OUT_LEN_MAX ];
 #endif /* MBEDTLS_SSL_DTLS_CONNECTION_ID */
 

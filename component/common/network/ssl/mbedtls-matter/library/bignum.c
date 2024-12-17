@@ -42,6 +42,7 @@
 #include "mbedtls/platform_util.h"
 #include "mbedtls/error.h"
 #include "constant_time_internal.h"
+#include "bignum_internal.h"
 
 #include <limits.h>
 #include <string.h>
@@ -54,6 +55,51 @@
 #define mbedtls_printf     printf
 #define mbedtls_calloc    calloc
 #define mbedtls_free       free
+#endif
+
+#if defined(MBEDTLS_BIGNUM_USE_S_ROM_API)
+#include "mbedtls/bignum_rom.h"
+#define mbedtls_mpi_init                     _mbedtls_mpi_init
+#define mbedtls_mpi_free                     _mbedtls_mpi_free
+#define mbedtls_mpi_grow                     _mbedtls_mpi_grow
+#define mbedtls_mpi_shrink                   _mbedtls_mpi_shrink
+#define mbedtls_mpi_copy                     _mbedtls_mpi_copy
+#define mbedtls_mpi_swap                     _mbedtls_mpi_swap
+// #define mbedtls_mpi_safe_cond_assign         _mbedtls_mpi_safe_cond_assign
+// #define mbedtls_mpi_safe_cond_swap           _mbedtls_mpi_safe_cond_swap
+#define mbedtls_mpi_lset                     _mbedtls_mpi_lset
+#define mbedtls_mpi_get_bit                  _mbedtls_mpi_get_bit
+#define mbedtls_mpi_set_bit                  _mbedtls_mpi_set_bit
+#define mbedtls_mpi_lsb                      _mbedtls_mpi_lsb
+#define mbedtls_mpi_bitlen                   _mbedtls_mpi_bitlen
+#define mbedtls_mpi_size                     _mbedtls_mpi_size
+#define mbedtls_mpi_read_binary              _mbedtls_mpi_read_binary
+#define mbedtls_mpi_write_binary             _mbedtls_mpi_write_binary
+#define mbedtls_mpi_shift_l                  _mbedtls_mpi_shift_l
+#define mbedtls_mpi_shift_r                  _mbedtls_mpi_shift_r
+#define mbedtls_mpi_cmp_abs                  _mbedtls_mpi_cmp_abs
+#define mbedtls_mpi_cmp_mpi                  _mbedtls_mpi_cmp_mpi
+#define mbedtls_mpi_cmp_int                  _mbedtls_mpi_cmp_int
+#define mbedtls_mpi_add_abs                  _mbedtls_mpi_add_abs
+#define mbedtls_mpi_sub_abs                  _mbedtls_mpi_sub_abs
+#define mbedtls_mpi_add_mpi                  _mbedtls_mpi_add_mpi
+#define mbedtls_mpi_sub_mpi                  _mbedtls_mpi_sub_mpi
+#define mbedtls_mpi_add_int                  _mbedtls_mpi_add_int
+#define mbedtls_mpi_sub_int                  _mbedtls_mpi_sub_int
+#define mbedtls_mpi_mul_mpi                  _mbedtls_mpi_mul_mpi
+#define mbedtls_mpi_read_string              _mbedtls_mpi_read_string
+#define mbedtls_mpi_mul_int                  _mbedtls_mpi_mul_int
+#define mbedtls_mpi_div_mpi                  _mbedtls_mpi_div_mpi
+#define mbedtls_mpi_div_int                  _mbedtls_mpi_div_int
+#define mbedtls_mpi_mod_mpi                  _mbedtls_mpi_mod_mpi
+#define mbedtls_mpi_mod_int                  _mbedtls_mpi_mod_int
+#define mbedtls_mpi_write_string             _mbedtls_mpi_write_string
+#define mbedtls_mpi_exp_mod                  _mbedtls_mpi_exp_mod
+#define mbedtls_mpi_gcd                      _mbedtls_mpi_gcd
+#define mbedtls_mpi_fill_random              _mbedtls_mpi_fill_random
+#define mbedtls_mpi_inv_mod                  _mbedtls_mpi_inv_mod
+#define mbedtls_mpi_is_prime                 _mbedtls_mpi_is_prime
+#define mbedtls_mpi_gen_prime                _mbedtls_mpi_gen_prime
 #endif
 
 #define MPI_VALIDATE_RET( cond )                                       \
@@ -74,6 +120,7 @@
 #define BITS_TO_LIMBS(i)  ( (i) / biL + ( (i) % biL != 0 ) )
 #define CHARS_TO_LIMBS(i) ( (i) / ciL + ( (i) % ciL != 0 ) )
 
+#if !defined(MBEDTLS_USE_ROM_API)
 /* Implementation that should never be optimized out by the compiler */
 static void mbedtls_mpi_zeroize( mbedtls_mpi_uint *v, size_t n )
 {
@@ -1872,44 +1919,24 @@ int mbedtls_mpi_mod_int( mbedtls_mpi_uint *r, const mbedtls_mpi *A, mbedtls_mpi_
 /*
  * Fast Montgomery initialization (thanks to Tom St Denis)
  */
-static void mpi_montg_init( mbedtls_mpi_uint *mm, const mbedtls_mpi *N )
+mbedtls_mpi_uint mbedtls_mpi_montmul_init(const mbedtls_mpi_uint *N)
 {
-    mbedtls_mpi_uint x, m0 = N->p[0];
-    unsigned int i;
+    mbedtls_mpi_uint x = N[0];
 
-    x  = m0;
-    x += ( ( m0 + 2 ) & 4 ) << 1;
+    x += ((N[0] + 2) & 4) << 1;
 
-    for( i = biL; i >= 8; i /= 2 )
-        x *= ( 2 - ( m0 * x ) );
+    for (unsigned int i = biL; i >= 8; i /= 2) {
+        x *= (2 - (N[0] * x));
+    }
 
-    *mm = ~x + 1;
+    return ~x + 1;
 }
 
-/** Montgomery multiplication: A = A * B * R^-1 mod N  (HAC 14.36)
- *
- * \param[in,out]   A   One of the numbers to multiply.
- *                      It must have at least as many limbs as N
- *                      (A->n >= N->n), and any limbs beyond n are ignored.
- *                      On successful completion, A contains the result of
- *                      the multiplication A * B * R^-1 mod N where
- *                      R = (2^ciL)^n.
- * \param[in]       B   One of the numbers to multiply.
- *                      It must be nonzero and must not have more limbs than N
- *                      (B->n <= N->n).
- * \param[in]       N   The modulo. N must be odd.
- * \param           mm  The value calculated by `mpi_montg_init(&mm, N)`.
- *                      This is -N^-1 mod 2^ciL.
- * \param[in,out]   T   A bignum for temporary storage.
- *                      It must be at least twice the limb size of N plus 2
- *                      (T->n >= 2 * (N->n + 1)).
- *                      Its initial content is unused and
- *                      its final content is indeterminate.
- *                      Note that unlike the usual convention in the library
- *                      for `const mbedtls_mpi*`, the content of T can change.
- */
-static void mpi_montmul( mbedtls_mpi *A, const mbedtls_mpi *B, const mbedtls_mpi *N, mbedtls_mpi_uint mm,
-                         const mbedtls_mpi *T )
+void mbedtls_mpi_montmul(mbedtls_mpi *A,
+                         const mbedtls_mpi *B,
+                         const mbedtls_mpi *N,
+                         mbedtls_mpi_uint mm,
+                         const mbedtls_mpi *T)
 {
     size_t i, n, m;
     mbedtls_mpi_uint u0, u1, *d;
@@ -1958,7 +1985,8 @@ static void mpi_montmul( mbedtls_mpi *A, const mbedtls_mpi *B, const mbedtls_mpi
 /*
  * Montgomery reduction: A = A * R^-1 mod N
  *
- * See mpi_montmul() regarding constraints and guarantees on the parameters.
+ * See mbedtls_mpi_montmul() regarding constraints and guarantees on the
+ * parameters.
  */
 static void mpi_montred( mbedtls_mpi *A, const mbedtls_mpi *N,
                          mbedtls_mpi_uint mm, const mbedtls_mpi *T )
@@ -1969,7 +1997,7 @@ static void mpi_montred( mbedtls_mpi *A, const mbedtls_mpi *N,
     U.n = U.s = (int) z;
     U.p = &z;
 
-    mpi_montmul( A, &U, N, mm, T );
+    mbedtls_mpi_montmul( A, &U, N, mm, T );
 }
 
 /**
@@ -1999,6 +2027,20 @@ static int mpi_select( mbedtls_mpi *R, const mbedtls_mpi *T, size_t T_size, size
 
 cleanup:
     return( ret );
+}
+
+int mbedtls_mpi_get_mont_r2_unsafe(mbedtls_mpi *X,
+                                   const mbedtls_mpi *N)
+{
+    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+
+    MBEDTLS_MPI_CHK(mbedtls_mpi_lset(X, 1));
+    MBEDTLS_MPI_CHK(mbedtls_mpi_shift_l(X, N->n * 2 * biL));
+    MBEDTLS_MPI_CHK(mbedtls_mpi_mod_mpi(X, X, N));
+    MBEDTLS_MPI_CHK(mbedtls_mpi_shrink(X, N->n));
+
+cleanup:
+    return ret;
 }
 
 /*
@@ -2034,7 +2076,7 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
     /*
      * Init temps and window size
      */
-    mpi_montg_init( &mm, N );
+    mm = mbedtls_mpi_montmul_init(N->p);
     mbedtls_mpi_init( &RR ); mbedtls_mpi_init( &T );
     mbedtls_mpi_init( &Apos );
     mbedtls_mpi_init( &WW );
@@ -2051,10 +2093,11 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
 #endif
 
     j = N->n + 1;
-    /* All W[i] and X must have at least N->n limbs for the mpi_montmul()
-     * and mpi_montred() calls later. Here we ensure that W[1] and X are
-     * large enough, and later we'll grow other W[i] to the same length.
-     * They must not be shrunk midway through this function!
+    /* All W[i] and X must have at least N->n limbs for
+     * the mbedtls_mpi_montmul() and mpi_montred() calls later. Here we ensure
+     * that W[1] and X are large enough, and later we'll 
+     * grow other W[i] to the same length. They must not be shrunk midway
+     * through this function!
      */
     MBEDTLS_MPI_CHK( mbedtls_mpi_grow( X, j ) );
     MBEDTLS_MPI_CHK( mbedtls_mpi_grow( &W[1],  j ) );
@@ -2076,9 +2119,7 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
      */
     if( prec_RR == NULL || prec_RR->p == NULL )
     {
-        MBEDTLS_MPI_CHK( mbedtls_mpi_lset( &RR, 1 ) );
-        MBEDTLS_MPI_CHK( mbedtls_mpi_shift_l( &RR, N->n * 2 * biL ) );
-        MBEDTLS_MPI_CHK( mbedtls_mpi_mod_mpi( &RR, &RR, N ) );
+        mbedtls_mpi_get_mont_r2_unsafe(&RR, N);
 
         if( prec_RR != NULL )
             memcpy( prec_RR, &RR, sizeof( mbedtls_mpi ) );
@@ -2094,7 +2135,7 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
         MBEDTLS_MPI_CHK( mbedtls_mpi_mod_mpi( &W[1], A, N ) );
         /* This should be a no-op because W[1] is already that large before
          * mbedtls_mpi_mod_mpi(), but it's necessary to avoid an overflow
-         * in mpi_montmul() below, so let's make sure. */
+         * in mbedtls_mpi_montmul() below, so let's make sure. */
         MBEDTLS_MPI_CHK( mbedtls_mpi_grow( &W[1], N->n + 1 ) );
     }
     else
@@ -2102,7 +2143,7 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
 
     /* Note that this is safe because W[1] always has at least N->n limbs
      * (it grew above and was preserved by mbedtls_mpi_copy()). */
-    mpi_montmul( &W[1], &RR, N, mm, &T );
+    mbedtls_mpi_montmul( &W[1], &RR, N, mm, &T );
 
     /*
      * X = R^2 * R^-1 mod N = R mod N
@@ -2121,7 +2162,7 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
         MBEDTLS_MPI_CHK( mbedtls_mpi_copy( &W[j], &W[1]    ) );
 
         for( i = 0; i < wsize - 1; i++ )
-            mpi_montmul( &W[j], &W[j], N, mm, &T );
+            mbedtls_mpi_montmul( &W[j], &W[j], N, mm, &T );
 
         /*
          * W[i] = W[i - 1] * W[1]
@@ -2131,7 +2172,7 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
             MBEDTLS_MPI_CHK( mbedtls_mpi_grow( &W[i], N->n + 1 ) );
             MBEDTLS_MPI_CHK( mbedtls_mpi_copy( &W[i], &W[i - 1] ) );
 
-            mpi_montmul( &W[i], &W[1], N, mm, &T );
+            mbedtls_mpi_montmul( &W[i], &W[1], N, mm, &T );
         }
     }
 
@@ -2168,7 +2209,7 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
             /*
              * out of window, square X
              */
-            mpi_montmul( X, X, N, mm, &T );
+            mbedtls_mpi_montmul( X, X, N, mm, &T );
             continue;
         }
 
@@ -2186,13 +2227,13 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
              * X = X^wsize R^-1 mod N
              */
             for( i = 0; i < wsize; i++ )
-                mpi_montmul( X, X, N, mm, &T );
+                mbedtls_mpi_montmul( X, X, N, mm, &T );
 
             /*
              * X = X * W[wbits] R^-1 mod N
              */
             MBEDTLS_MPI_CHK( mpi_select( &WW, W, (size_t) 1 << wsize, wbits ) );
-            mpi_montmul( X, &WW, N, mm, &T );
+            mbedtls_mpi_montmul( X, &WW, N, mm, &T );
 
             state--;
             nbits = 0;
@@ -2205,12 +2246,12 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
      */
     for( i = 0; i < nbits; i++ )
     {
-        mpi_montmul( X, X, N, mm, &T );
+        mbedtls_mpi_montmul( X, X, N, mm, &T );
 
         wbits <<= 1;
 
         if( ( wbits & ( one << wsize ) ) != 0 )
-            mpi_montmul( X, &W[1], N, mm, &T );
+            mbedtls_mpi_montmul( X, &W[1], N, mm, &T );
     }
 
     /*
@@ -2733,6 +2774,7 @@ cleanup:
     return( ret );
 }
 
+#if !defined(MBEDTLS_BIGNUM_USE_S_ROM_API)
 /*
  * Pseudo-primality test: small factors, then Miller-Rabin
  */
@@ -2766,6 +2808,7 @@ int mbedtls_mpi_is_prime_ext( const mbedtls_mpi *X, int rounds,
 
     return( mpi_miller_rabin( &XX, rounds, f_rng, p_rng ) );
 }
+#endif //!defined(MBEDTLS_BIGNUM_USE_S_ROM_API)
 
 #if !defined(MBEDTLS_DEPRECATED_REMOVED)
 /*
@@ -3089,5 +3132,7 @@ cleanup:
 }
 
 #endif /* MBEDTLS_SELF_TEST */
+
+#endif /* !defined(MBEDTLS_USE_ROM_API) */
 
 #endif /* MBEDTLS_BIGNUM_C */

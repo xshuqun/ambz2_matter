@@ -57,6 +57,17 @@
 
 #define ENTROPY_MAX_LOOP    256     /**< Maximum amount to loop before error */
 
+#if defined(MBEDTLS_ENTROPY_HARDWARE_ALT)
+#include "osdep_service.h"
+int mbedtls_hardware_poll( void *data,
+                           unsigned char *output, size_t len, size_t *olen )
+{
+	rtw_get_random_bytes(output, len);
+	*olen = len;
+	return 0;
+}
+#endif
+
 void mbedtls_entropy_init( mbedtls_entropy_context *ctx )
 {
     ctx->source_count = 0;

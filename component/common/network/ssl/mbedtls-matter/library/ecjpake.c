@@ -24,6 +24,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if defined(MBEDTLS_ECJPAKE_C)
 
 #include "mbedtls/ecjpake.h"
@@ -1139,3 +1140,5 @@ cleanup:
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* MBEDTLS_ECJPAKE_C */
+
+#endif /* MBEDTLS_USE_ROM_API */

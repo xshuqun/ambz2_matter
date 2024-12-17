@@ -24,6 +24,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API) || (defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1))
 #if defined(MBEDTLS_SHA512_C)
 
 #include "mbedtls/sha512.h"
@@ -658,3 +659,5 @@ exit:
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* MBEDTLS_SHA512_C */
+
+#endif /* MBEDTLS_USE_ROM_API */

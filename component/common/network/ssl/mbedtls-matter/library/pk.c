@@ -49,6 +49,7 @@
 #define PK_VALIDATE( cond )        \
     MBEDTLS_INTERNAL_VALIDATE( cond )
 
+#if !defined(MBEDTLS_USE_ROM_API)
 /*
  * Initialise a mbedtls_pk_context
  */
@@ -582,6 +583,8 @@ mbedtls_pk_type_t mbedtls_pk_get_type( const mbedtls_pk_context *ctx )
 
     return( ctx->pk_info->type );
 }
+
+#endif /* MBEDTLS_USE_ROM_API */
 
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 /*

@@ -21,6 +21,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if defined(MBEDTLS_OID_C)
 
 #include "mbedtls/oid.h"
@@ -765,3 +766,5 @@ int mbedtls_oid_get_numeric_string( char *buf, size_t size,
 }
 
 #endif /* MBEDTLS_OID_C */
+
+#endif /* MBEDTLS_USE_ROM_API */

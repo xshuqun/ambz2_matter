@@ -40,6 +40,20 @@
 
 #include <string.h>
 
+#include "device_lock.h"
+
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+#if defined(__ICCARM__)
+extern void (__cmse_nonsecure_call *ns_device_mutex_lock)(uint32_t);
+extern void (__cmse_nonsecure_call *ns_device_mutex_unlock)(uint32_t);
+#else
+extern void __attribute__((cmse_nonsecure_call)) (*ns_device_mutex_lock)(uint32_t);
+extern void __attribute__((cmse_nonsecure_call)) (*ns_device_mutex_unlock)(uint32_t);
+#endif
+#define device_mutex_lock ns_device_mutex_lock
+#define device_mutex_unlock ns_device_mutex_unlock
+#endif
+
 #if defined(MBEDTLS_PEM_PARSE_C)
 #include "mbedtls/pem.h"
 #endif
@@ -63,9 +77,11 @@
 #include "mbedtls/threading.h"
 #endif
 
-#if defined(MBEDTLS_HAVE_TIME)
 #if defined(_WIN32) && !defined(EFIX64) && !defined(EFI32)
 #include <windows.h>
+#else
+#if (defined(CONFIG_SYSTEM_TIME64) && CONFIG_SYSTEM_TIME64)
+#include "time64.h"
 #else
 #include <time.h>
 #endif
@@ -1455,6 +1471,18 @@ int mbedtls_x509_crt_parse( mbedtls_x509_crt *chain,
             mbedtls_pem_init( &pem );
 
             /* If we get there, we know the string is null-terminated */
+#ifdef RTL_HW_CRYPTO
+            if(rom_ssl_ram_map.use_hw_crypto_func)
+            {
+                device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+                ret = mbedtls_pem_read_buffer( &pem,
+                           "-----BEGIN CERTIFICATE-----",
+                           "-----END CERTIFICATE-----",
+                           buf, NULL, 0, &use_len );
+                device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+            }
+            else
+#endif
             ret = mbedtls_pem_read_buffer( &pem,
                            "-----BEGIN CERTIFICATE-----",
                            "-----END CERTIFICATE-----",
@@ -1815,9 +1843,10 @@ static int x509_info_subject_alt_name( char **buf, size_t *size,
                     MBEDTLS_X509_SAFE_SNPRINTF;
                     ret = mbedtls_snprintf( p, n, "\n%s            hardware type          : ", prefix );
                     MBEDTLS_X509_SAFE_SNPRINTF;
-
+#if !defined(MBEDTLS_USE_ROM_API)
                     ret = mbedtls_oid_get_numeric_string( p, n, &other_name->value.hardware_module_name.oid );
                     MBEDTLS_X509_SAFE_SNPRINTF;
+#endif
 
                     ret = mbedtls_snprintf( p, n, "\n%s            hardware serial number : ", prefix );
                     MBEDTLS_X509_SAFE_SNPRINTF;
@@ -2030,8 +2059,10 @@ static int x509_info_cert_policies( char **buf, size_t *size,
 
     while( cur != NULL )
     {
+#if !defined(MBEDTLS_USE_ROM_API)
         if( mbedtls_oid_get_certificate_policies( &cur->buf, &desc ) != 0 )
             desc = "???";
+#endif
 
         ret = mbedtls_snprintf( p, n, "%s%s", sep, desc );
         MBEDTLS_X509_SAFE_SNPRINTF;
