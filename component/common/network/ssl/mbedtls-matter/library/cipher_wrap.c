@@ -84,6 +84,20 @@
 #define mbedtls_free       free
 #endif
 
+#include "device_lock.h"
+
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+#if defined(__ICCARM__)
+extern void (__cmse_nonsecure_call *ns_device_mutex_lock)(uint32_t);
+extern void (__cmse_nonsecure_call *ns_device_mutex_unlock)(uint32_t);
+#else
+extern void __attribute__((cmse_nonsecure_call)) (*ns_device_mutex_lock)(uint32_t);
+extern void __attribute__((cmse_nonsecure_call)) (*ns_device_mutex_unlock)(uint32_t);
+#endif
+#define device_mutex_lock ns_device_mutex_lock
+#define device_mutex_unlock ns_device_mutex_unlock
+#endif
+
 #if defined(MBEDTLS_GCM_C)
 /* shared by all GCM ciphers */
 static void *gcm_ctx_alloc( void )
@@ -127,6 +141,15 @@ static void ccm_ctx_free( void *ctx )
 static int aes_crypt_ecb_wrap( void *ctx, mbedtls_operation_t operation,
         const unsigned char *input, unsigned char *output )
 {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+    if(rom_ssl_ram_map.use_hw_crypto_func)
+    {
+        device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+        int ret = mbedtls_aes_crypt_ecb( (mbedtls_aes_context *) ctx, operation, input, output );
+        device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        return ret;
+    }
+#endif
     return mbedtls_aes_crypt_ecb( (mbedtls_aes_context *) ctx, operation, input, output );
 }
 
@@ -134,6 +157,16 @@ static int aes_crypt_ecb_wrap( void *ctx, mbedtls_operation_t operation,
 static int aes_crypt_cbc_wrap( void *ctx, mbedtls_operation_t operation, size_t length,
         unsigned char *iv, const unsigned char *input, unsigned char *output )
 {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+    if(rom_ssl_ram_map.use_hw_crypto_func)
+    {
+        device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+        int ret = mbedtls_aes_crypt_cbc( (mbedtls_aes_context *) ctx, operation, length, iv, input,
+                          output );
+        device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        return ret;
+    }
+#endif
     return mbedtls_aes_crypt_cbc( (mbedtls_aes_context *) ctx, operation, length, iv, input,
                           output );
 }
@@ -144,6 +177,16 @@ static int aes_crypt_cfb128_wrap( void *ctx, mbedtls_operation_t operation,
         size_t length, size_t *iv_off, unsigned char *iv,
         const unsigned char *input, unsigned char *output )
 {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+    if(rom_ssl_ram_map.use_hw_crypto_func)
+    {
+        device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+        int ret = mbedtls_aes_crypt_cfb128( (mbedtls_aes_context *) ctx, operation, length, iv_off, iv,
+                             input, output );
+        device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        return ret;
+    }
+#endif
     return mbedtls_aes_crypt_cfb128( (mbedtls_aes_context *) ctx, operation, length, iv_off, iv,
                              input, output );
 }
@@ -163,6 +206,16 @@ static int aes_crypt_ctr_wrap( void *ctx, size_t length, size_t *nc_off,
         unsigned char *nonce_counter, unsigned char *stream_block,
         const unsigned char *input, unsigned char *output )
 {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+    if(rom_ssl_ram_map.use_hw_crypto_func)
+    {
+        device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+        int ret = mbedtls_aes_crypt_ctr( (mbedtls_aes_context *) ctx, length, nc_off, nonce_counter,
+                          stream_block, input, output );
+        device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        return ret;
+    }
+#endif
     return mbedtls_aes_crypt_ctr( (mbedtls_aes_context *) ctx, length, nc_off, nonce_counter,
                           stream_block, input, output );
 }
@@ -1422,6 +1475,16 @@ static int des3_crypt_ecb_wrap( void *ctx, mbedtls_operation_t operation,
 static int des_crypt_cbc_wrap( void *ctx, mbedtls_operation_t operation, size_t length,
         unsigned char *iv, const unsigned char *input, unsigned char *output )
 {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_DES_ALT) || defined(MBEDTLS_USE_ROM_API))
+    if(rom_ssl_ram_map.use_hw_crypto_func)
+    {
+        device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+        int ret = mbedtls_des_crypt_cbc( (mbedtls_des_context *) ctx, operation, length, iv, input,
+                          output );
+        device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        return ret;
+    }
+#endif
     return mbedtls_des_crypt_cbc( (mbedtls_des_context *) ctx, operation, length, iv, input,
                           output );
 }
@@ -1431,6 +1494,16 @@ static int des_crypt_cbc_wrap( void *ctx, mbedtls_operation_t operation, size_t 
 static int des3_crypt_cbc_wrap( void *ctx, mbedtls_operation_t operation, size_t length,
         unsigned char *iv, const unsigned char *input, unsigned char *output )
 {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_DES_ALT) || defined(MBEDTLS_USE_ROM_API))
+    if(rom_ssl_ram_map.use_hw_crypto_func)
+    {
+        device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+        int ret = mbedtls_des3_crypt_cbc( (mbedtls_des3_context *) ctx, operation, length, iv, input,
+                           output );
+        device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        return ret;
+    }
+#endif
     return mbedtls_des3_crypt_cbc( (mbedtls_des3_context *) ctx, operation, length, iv, input,
                            output );
 }

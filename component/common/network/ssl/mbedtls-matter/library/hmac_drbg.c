@@ -25,6 +25,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if defined(MBEDTLS_HMAC_DRBG_C)
 
 #include "mbedtls/hmac_drbg.h"
@@ -627,3 +628,5 @@ int mbedtls_hmac_drbg_self_test( int verbose )
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* MBEDTLS_HMAC_DRBG_C */
+
+#endif /* MBEDTLS_USE_ROM_API */

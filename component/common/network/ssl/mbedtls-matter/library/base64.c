@@ -19,6 +19,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if defined(MBEDTLS_BASE64_C)
 
 #include "mbedtls/base64.h"
@@ -275,3 +276,5 @@ int mbedtls_base64_self_test( int verbose )
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* MBEDTLS_BASE64_C */
+
+#endif /* MBEDTLS_USE_ROM_API */

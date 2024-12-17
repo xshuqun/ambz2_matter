@@ -37,6 +37,7 @@
 #include "mbedtls/platform_util.h"
 
 #include <string.h>
+#include "device_lock.h"
 
 #if defined(MBEDTLS_PEM_PARSE_C)
 #include "mbedtls/pem.h"
@@ -52,9 +53,11 @@
 #define mbedtls_snprintf   snprintf
 #endif
 
-#if defined(MBEDTLS_HAVE_TIME)
 #if defined(_WIN32) && !defined(EFIX64) && !defined(EFI32)
 #include <windows.h>
+#else
+#if (defined(CONFIG_SYSTEM_TIME64) && CONFIG_SYSTEM_TIME64)
+#include "time64.h"
 #else
 #include <time.h>
 #endif
@@ -553,11 +556,24 @@ int mbedtls_x509_crl_parse( mbedtls_x509_crl *chain, const unsigned char *buf, s
         if( buflen == 0 || buf[buflen - 1] != '\0' )
             ret = MBEDTLS_ERR_PEM_NO_HEADER_FOOTER_PRESENT;
         else
+		{
+#ifdef RTL_HW_CRYPTO
+            if(rom_ssl_ram_map.use_hw_crypto_func)
+            {
+                device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+                ret = mbedtls_pem_read_buffer( &pem,
+                                           "-----BEGIN X509 CRL-----",
+                                           "-----END X509 CRL-----",
+                                            buf, NULL, 0, &use_len );
+                device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+            }
+            else
+#endif
             ret = mbedtls_pem_read_buffer( &pem,
                                            "-----BEGIN X509 CRL-----",
                                            "-----END X509 CRL-----",
                                             buf, NULL, 0, &use_len );
-
+        }
         if( ret == 0 )
         {
             /*

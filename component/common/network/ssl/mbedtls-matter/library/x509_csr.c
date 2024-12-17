@@ -37,6 +37,7 @@
 #include "mbedtls/platform_util.h"
 
 #include <string.h>
+#include "device_lock.h"
 
 #if defined(MBEDTLS_PEM_PARSE_C)
 #include "mbedtls/pem.h"
@@ -273,6 +274,18 @@ int mbedtls_x509_csr_parse( mbedtls_x509_csr *csr, const unsigned char *buf, siz
     if( buf[buflen - 1] == '\0' )
     {
         mbedtls_pem_init( &pem );
+#ifdef RTL_HW_CRYPTO
+        if(rom_ssl_ram_map.use_hw_crypto_func)
+        {
+            device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+            ret = mbedtls_pem_read_buffer( &pem,
+                               "-----BEGIN CERTIFICATE REQUEST-----",
+                               "-----END CERTIFICATE REQUEST-----",
+                               buf, NULL, 0, &use_len );
+            device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        }
+        else
+#endif
         ret = mbedtls_pem_read_buffer( &pem,
                                        "-----BEGIN CERTIFICATE REQUEST-----",
                                        "-----END CERTIFICATE REQUEST-----",

@@ -561,6 +561,7 @@ static const mbedtls_ecp_curve_info ecp_supported_curves[] =
 #define ECP_NB_CURVES   sizeof( ecp_supported_curves ) /    \
                         sizeof( ecp_supported_curves[0] )
 
+#if !defined(MBEDTLS_USE_ROM_API)
 static mbedtls_ecp_group_id ecp_supported_grp_id[ECP_NB_CURVES];
 
 /*
@@ -3600,5 +3601,7 @@ cleanup:
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* !MBEDTLS_ECP_ALT */
+
+#endif /* MBEDTLS_USE_ROM_API */
 
 #endif /* MBEDTLS_ECP_C */

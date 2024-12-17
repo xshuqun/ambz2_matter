@@ -2884,7 +2884,11 @@ static int ssl_write_encrypted_pms( mbedtls_ssl_context *ssl,
     unsigned char *p = ssl->handshake->premaster + pms_offset;
     mbedtls_pk_context * peer_pk;
 
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+    if( offset + len_bytes > ssl->conf->max_content_len )
+#else
     if( offset + len_bytes > MBEDTLS_SSL_OUT_CONTENT_LEN )
+#endif
     {
         MBEDTLS_SSL_DEBUG_MSG( 1, ( "buffer too small for encrypted pms" ) );
         return( MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL );
@@ -2933,7 +2937,11 @@ static int ssl_write_encrypted_pms( mbedtls_ssl_context *ssl,
     if( ( ret = mbedtls_pk_encrypt( peer_pk,
                             p, ssl->handshake->pmslen,
                             ssl->out_msg + offset + len_bytes, olen,
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+                            ssl->conf->max_content_len - offset - len_bytes,
+#else
                             MBEDTLS_SSL_OUT_CONTENT_LEN - offset - len_bytes,
+#endif
                             ssl->conf->f_rng, ssl->conf->p_rng ) ) != 0 )
     {
         MBEDTLS_SSL_DEBUG_RET( 1, "mbedtls_rsa_pkcs1_encrypt", ret );
@@ -3955,7 +3963,11 @@ ecdh_calc_secret:
         header_len = 4;
         content_len = ssl->conf->psk_identity_len;
 
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+        if( header_len + 2 + content_len > ssl->conf->max_content_len )
+#else
         if( header_len + 2 + content_len > MBEDTLS_SSL_OUT_CONTENT_LEN )
+#endif
         {
             MBEDTLS_SSL_DEBUG_MSG( 1,
                 ( "psk identity too long or SSL buffer too short" ) );
@@ -4012,7 +4024,11 @@ ecdh_calc_secret:
              */
             content_len = ssl->handshake->dhm_ctx.len;
 
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+            if( header_len + 2 + content_len > ssl->conf->max_content_len )
+#else
             if( header_len + 2 + content_len >
+#endif
                 MBEDTLS_SSL_OUT_CONTENT_LEN )
             {
                 MBEDTLS_SSL_DEBUG_MSG( 1,
@@ -4052,8 +4068,12 @@ ecdh_calc_secret:
              */
             ret = mbedtls_ecdh_make_public( &ssl->handshake->ecdh_ctx,
                     &content_len,
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek            
+                    &ssl->out_msg[header_len], ssl->conf->max_content_len - header_len,
+#else
                     &ssl->out_msg[header_len],
                     MBEDTLS_SSL_OUT_CONTENT_LEN - header_len,
+#endif
                     ssl->conf->f_rng, ssl->conf->p_rng );
             if( ret != 0 )
             {
@@ -4109,9 +4129,13 @@ ecdh_calc_secret:
         header_len = 4;
 
         ret = mbedtls_ecjpake_write_round_two( &ssl->handshake->ecjpake_ctx,
+#if defined(MBEDTLS_SSL_DYNAMIC_MAX_CONTENT_LEN) //modify by Realtek
+                ssl->out_msg + header_len, ssl->conf->max_content_len - header_len, &content_len, 
+#else
                 ssl->out_msg + header_len,
                 MBEDTLS_SSL_OUT_CONTENT_LEN - header_len,
                 &content_len,
+#endif
                 ssl->conf->f_rng, ssl->conf->p_rng );
         if( ret != 0 )
         {
@@ -4262,7 +4286,12 @@ sign:
         /*
          * For ECDSA, default hash is SHA-1 only
          */
+#if defined(CONFIG_BUILD_NONSECURE) && (CONFIG_BUILD_NONSECURE == 1) && defined(CONFIG_SSL_CLIENT_PRIVATE_IN_TZ) && (CONFIG_SSL_CLIENT_PRIVATE_IN_TZ == 1)
+        extern int NS_ENTRY secure_mbedtls_pk_can_do(const mbedtls_pk_context *ctx, mbedtls_pk_type_t type);
+        if( secure_mbedtls_pk_can_do( mbedtls_ssl_own_key( ssl ), MBEDTLS_PK_ECDSA ) )
+#else
         if( mbedtls_pk_can_do( mbedtls_ssl_own_key( ssl ), MBEDTLS_PK_ECDSA ) )
+#endif
         {
             hash_start += 16;
             hashlen -= 16;
@@ -4301,7 +4330,12 @@ sign:
             md_alg = MBEDTLS_MD_SHA256;
             ssl->out_msg[4] = MBEDTLS_SSL_HASH_SHA256;
         }
+#if defined(CONFIG_BUILD_NONSECURE) && (CONFIG_BUILD_NONSECURE == 1) && defined(CONFIG_SSL_CLIENT_PRIVATE_IN_TZ) && (CONFIG_SSL_CLIENT_PRIVATE_IN_TZ == 1)
+        extern unsigned char NS_ENTRY secure_mbedtls_ssl_sig_from_pk(mbedtls_pk_context *pk);
+        ssl->out_msg[5] = secure_mbedtls_ssl_sig_from_pk( mbedtls_ssl_own_key( ssl ) );
+#else
         ssl->out_msg[5] = mbedtls_ssl_sig_from_pk( mbedtls_ssl_own_key( ssl ) );
+#endif
 
         /* Info from md_alg will be used instead */
         hashlen = 0;
@@ -4319,10 +4353,35 @@ sign:
         rs_ctx = &ssl->handshake->ecrs_ctx.pk;
 #endif
 
+#if defined(CONFIG_BUILD_NONSECURE) && (CONFIG_BUILD_NONSECURE == 1) && defined(CONFIG_SSL_CLIENT_PRIVATE_IN_TZ) && (CONFIG_SSL_CLIENT_PRIVATE_IN_TZ == 1)
+    struct secure_mbedtls_pk_sign_param {
+        mbedtls_pk_context *ctx;
+        mbedtls_md_type_t md_alg;
+        unsigned char *hash;
+        size_t hash_len;
+        unsigned char *sig;
+        size_t *sig_len;
+        int (*f_rng)(void *, unsigned char *, size_t);
+        void *p_rng;
+    } param = {
+        mbedtls_ssl_own_key( ssl ),
+        md_alg,
+        hash_start,
+        hashlen,
+        ssl->out_msg + 6 + offset,
+        &n,
+        ssl->conf->f_rng,
+        ssl->conf->p_rng,
+    };
+
+    extern int NS_ENTRY secure_mbedtls_pk_sign(struct secure_mbedtls_pk_sign_param *param);
+    if( ( ret = secure_mbedtls_pk_sign( &param ) ) != 0 )
+#else
     if( ( ret = mbedtls_pk_sign_restartable( mbedtls_ssl_own_key( ssl ),
                          md_alg, hash_start, hashlen,
                          ssl->out_msg + 6 + offset, &n,
                          ssl->conf->f_rng, ssl->conf->p_rng, rs_ctx ) ) != 0 )
+#endif
     {
         MBEDTLS_SSL_DEBUG_RET( 1, "mbedtls_pk_sign", ret );
 #if defined(MBEDTLS_SSL_ECP_RESTARTABLE_ENABLED)

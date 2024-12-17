@@ -19,6 +19,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if defined(MBEDTLS_ECP_C)
 
 #include "mbedtls/ecp.h"
@@ -1478,3 +1479,5 @@ static int ecp_mod_p256k1( mbedtls_mpi *N )
 #endif /* !MBEDTLS_ECP_ALT */
 
 #endif /* MBEDTLS_ECP_C */
+
+#endif /* MBEDTLS_USE_ROM_API */

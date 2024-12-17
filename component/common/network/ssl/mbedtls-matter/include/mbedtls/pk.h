@@ -217,6 +217,7 @@ typedef struct
 typedef void mbedtls_pk_restart_ctx;
 #endif /* MBEDTLS_ECDSA_C && MBEDTLS_ECP_RESTARTABLE */
 
+
 #if defined(MBEDTLS_PK_RSA_ALT_SUPPORT)
 /**
  * \brief           Types for RSA-alt abstraction

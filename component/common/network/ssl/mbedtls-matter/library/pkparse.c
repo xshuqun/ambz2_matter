@@ -28,6 +28,19 @@
 #include "mbedtls/error.h"
 
 #include <string.h>
+#include "device_lock.h"
+
+#if defined(CONFIG_BUILD_SECURE) && (CONFIG_BUILD_SECURE == 1)
+#if defined(__ICCARM__)
+extern void (__cmse_nonsecure_call *ns_device_mutex_lock)(uint32_t);
+extern void (__cmse_nonsecure_call *ns_device_mutex_unlock)(uint32_t);
+#else
+extern void __attribute__((cmse_nonsecure_call)) (*ns_device_mutex_lock)(uint32_t);
+extern void __attribute__((cmse_nonsecure_call)) (*ns_device_mutex_unlock)(uint32_t);
+#endif
+#define device_mutex_lock ns_device_mutex_lock
+#define device_mutex_unlock ns_device_mutex_unlock
+#endif
 
 #if defined(MBEDTLS_RSA_C)
 #include "mbedtls/rsa.h"
@@ -1237,11 +1250,24 @@ int mbedtls_pk_parse_key( mbedtls_pk_context *pk,
     if( key[keylen - 1] != '\0' )
         ret = MBEDTLS_ERR_PEM_NO_HEADER_FOOTER_PRESENT;
     else
+    {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+        if(rom_ssl_ram_map.use_hw_crypto_func)
+        {
+            device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+            ret = mbedtls_pem_read_buffer( &pem,
+                               "-----BEGIN RSA PRIVATE KEY-----",
+                               "-----END RSA PRIVATE KEY-----",
+                               key, pwd, pwdlen, &len );
+            device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        }
+        else
+#endif
         ret = mbedtls_pem_read_buffer( &pem,
                                "-----BEGIN RSA PRIVATE KEY-----",
                                "-----END RSA PRIVATE KEY-----",
                                key, pwd, pwdlen, &len );
-
+    }
     if( ret == 0 )
     {
         pk_info = mbedtls_pk_info_from_type( MBEDTLS_PK_RSA );
@@ -1268,10 +1294,24 @@ int mbedtls_pk_parse_key( mbedtls_pk_context *pk,
     if( key[keylen - 1] != '\0' )
         ret = MBEDTLS_ERR_PEM_NO_HEADER_FOOTER_PRESENT;
     else
+    {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+        if(rom_ssl_ram_map.use_hw_crypto_func)
+        {
+            device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+            ret = mbedtls_pem_read_buffer( &pem,
+                               "-----BEGIN EC PRIVATE KEY-----",
+                               "-----END EC PRIVATE KEY-----",
+                               key, pwd, pwdlen, &len );
+            device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        }
+        else
+#endif
         ret = mbedtls_pem_read_buffer( &pem,
                                "-----BEGIN EC PRIVATE KEY-----",
                                "-----END EC PRIVATE KEY-----",
                                key, pwd, pwdlen, &len );
+    }
     if( ret == 0 )
     {
         pk_info = mbedtls_pk_info_from_type( MBEDTLS_PK_ECKEY );
@@ -1298,10 +1338,24 @@ int mbedtls_pk_parse_key( mbedtls_pk_context *pk,
     if( key[keylen - 1] != '\0' )
         ret = MBEDTLS_ERR_PEM_NO_HEADER_FOOTER_PRESENT;
     else
+    {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+        if(rom_ssl_ram_map.use_hw_crypto_func)
+        {
+            device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+            ret = mbedtls_pem_read_buffer( &pem,
+                               "-----BEGIN PRIVATE KEY-----",
+                               "-----END PRIVATE KEY-----",
+                               key, NULL, 0, &len );
+            device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        }
+        else
+#endif
         ret = mbedtls_pem_read_buffer( &pem,
                                "-----BEGIN PRIVATE KEY-----",
                                "-----END PRIVATE KEY-----",
                                key, NULL, 0, &len );
+    }
     if( ret == 0 )
     {
         if( ( ret = pk_parse_key_pkcs8_unencrypted_der( pk,
@@ -1321,10 +1375,24 @@ int mbedtls_pk_parse_key( mbedtls_pk_context *pk,
     if( key[keylen - 1] != '\0' )
         ret = MBEDTLS_ERR_PEM_NO_HEADER_FOOTER_PRESENT;
     else
+    {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+        if(rom_ssl_ram_map.use_hw_crypto_func)
+        {
+            device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+            ret = mbedtls_pem_read_buffer( &pem,
+                               "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+                               "-----END ENCRYPTED PRIVATE KEY-----",
+                               key, NULL, 0, &len );
+            device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        }
+        else
+#endif
         ret = mbedtls_pem_read_buffer( &pem,
                                "-----BEGIN ENCRYPTED PRIVATE KEY-----",
                                "-----END ENCRYPTED PRIVATE KEY-----",
                                key, NULL, 0, &len );
+    }
     if( ret == 0 )
     {
         if( ( ret = pk_parse_key_pkcs8_encrypted_der( pk,
@@ -1454,11 +1522,25 @@ int mbedtls_pk_parse_public_key( mbedtls_pk_context *ctx,
     if( key[keylen - 1] != '\0' )
         ret = MBEDTLS_ERR_PEM_NO_HEADER_FOOTER_PRESENT;
     else
+    {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+        if(rom_ssl_ram_map.use_hw_crypto_func)
+        {
+            device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+            ret = mbedtls_pem_read_buffer( &pem,
+                "-----BEGIN RSA PUBLIC KEY-----",
+                "-----END RSA PUBLIC KEY-----",
+                key, NULL, 0, &len );
+            device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        }
+        else
+#endif
         ret = mbedtls_pem_read_buffer( &pem,
                                "-----BEGIN RSA PUBLIC KEY-----",
                                "-----END RSA PUBLIC KEY-----",
                                key, NULL, 0, &len );
-
+    }
+    
     if( ret == 0 )
     {
         p = pem.buf;
@@ -1491,11 +1573,24 @@ int mbedtls_pk_parse_public_key( mbedtls_pk_context *ctx,
     if( key[keylen - 1] != '\0' )
         ret = MBEDTLS_ERR_PEM_NO_HEADER_FOOTER_PRESENT;
     else
+    {
+#if defined(RTL_HW_CRYPTO) && (!defined(MBEDTLS_AES_ALT) || defined(MBEDTLS_USE_ROM_API))
+        if(rom_ssl_ram_map.use_hw_crypto_func)
+        {
+            device_mutex_lock(RT_DEV_LOCK_CRYPTO);
+            ret = mbedtls_pem_read_buffer( &pem,
+                    "-----BEGIN PUBLIC KEY-----",
+                    "-----END PUBLIC KEY-----",
+                key, NULL, 0, &len );
+            device_mutex_unlock(RT_DEV_LOCK_CRYPTO);
+        }
+        else
+#endif
         ret = mbedtls_pem_read_buffer( &pem,
                 "-----BEGIN PUBLIC KEY-----",
                 "-----END PUBLIC KEY-----",
                 key, NULL, 0, &len );
-
+    }
     if( ret == 0 )
     {
         /*

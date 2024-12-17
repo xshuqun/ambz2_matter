@@ -23,6 +23,8 @@
 
 #include "common.h"
 
+//#if !(!defined(SUPPORT_HW_SSL_HMAC_SHA256) && defined(CONFIG_PLATFORM_8710C) && !defined(CONFIG_BUILD_SECURE))
+#if !defined(MBEDTLS_USE_ROM_API) || (!(!defined(SUPPORT_HW_SSL_HMAC_SHA256) && defined(CONFIG_PLATFORM_8710C) && !defined(CONFIG_BUILD_SECURE)))
 #if defined(MBEDTLS_MD_C)
 
 #include "mbedtls/md.h"
@@ -888,3 +890,5 @@ const char *mbedtls_md_get_name( const mbedtls_md_info_t *md_info )
 }
 
 #endif /* MBEDTLS_MD_C */
+
+#endif /* SUPPORT_HW_SSL_HMAC_SHA256 CONFIG_PLATFORM_8710C CONFIG_BUILD_SECURE */

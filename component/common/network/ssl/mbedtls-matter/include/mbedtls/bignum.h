@@ -182,6 +182,12 @@
     #endif /* !MBEDTLS_NO_UDBL_DIVISION */
 #endif /* !MBEDTLS_HAVE_INT64 */
 
+/* Added by Realtek: because Ameba GCC ROM have no __aeabi_uldivmod */
+#ifdef MBEDTLS_HAVE_UDBL
+//#error to check whether we need undef the macro here 
+#undef MBEDTLS_HAVE_UDBL
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

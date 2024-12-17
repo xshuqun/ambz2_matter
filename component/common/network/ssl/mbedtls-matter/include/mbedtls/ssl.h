@@ -1031,6 +1031,8 @@ struct mbedtls_ssl_config
     unsigned char min_major_ver;    /*!< min. major version used            */
     unsigned char min_minor_ver;    /*!< min. minor version used            */
 
+    unsigned int max_content_len;      /* add by Realtek !< Maxium fragment length in bytes, Default Value MBEDTLS_SSL_MAX_CONTENT_LEN               */
+
     /*
      * Flags (could be bit-fields to save RAM, but separate bytes make
      * the code smaller on architectures with an instruction for direct

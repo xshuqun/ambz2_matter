@@ -24,6 +24,7 @@
 
 #include "common.h"
 
+#if !defined(MBEDTLS_USE_ROM_API)
 #if defined(MBEDTLS_ARC4_C)
 
 #include "mbedtls/arc4.h"
@@ -193,3 +194,5 @@ exit:
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* MBEDTLS_ARC4_C */
+
+#endif /* MBEDTLS_USE_ROM_API */
