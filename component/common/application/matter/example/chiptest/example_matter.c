@@ -15,7 +15,7 @@
 
 #if defined(CONFIG_EXAMPLE_MATTER_CHIPTEST) && CONFIG_EXAMPLE_MATTER_CHIPTEST
 extern void ChipTest(void);
-
+extern uint8_t matter_example_thread_init;
 static void example_matter_task_thread(void *pvParameters)
 {
     while(!(wifi_is_up(RTW_STA_INTERFACE) || wifi_is_up(RTW_AP_INTERFACE))) {
@@ -43,6 +43,7 @@ static void example_matter_task_thread(void *pvParameters)
 
     ChipTest();
 
+    matter_example_thread_init = 1;
     vTaskDelete(NULL);
     return;
 }
