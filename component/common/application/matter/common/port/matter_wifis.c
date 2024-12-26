@@ -18,6 +18,8 @@ u32 apNum = 0; // no of total AP scanned
 u8 matter_wifi_trigger = 0;
 static rtw_scan_result_t matter_userdata[65] = {0};
 static char *matter_ssid;
+
+#if defined(CONFIG_AUTO_RECONNECT) && CONFIG_AUTO_RECONNECT
 void* matter_param_indicator;
 struct task_struct matter_wifi_autoreconnect_task;
 struct matter_wifi_autoreconnect_param {
@@ -28,6 +30,8 @@ struct matter_wifi_autoreconnect_param {
        int password_len;
        int key_id;
 };
+extern void (*p_wlan_autoreconnect_hdl)(rtw_security_t, char*, int, char*, int, int);
+#endif /* CONFIG_AUTO_RECONNECT */
 
 #if CONFIG_ENABLE_WPS
 extern char wps_profile_ssid[33];
@@ -236,6 +240,7 @@ static int matter_get_ap_security_mode(IN char * ssid, OUT rtw_security_t *secur
     return 0;
 }
 
+#if defined(CONFIG_AUTO_RECONNECT) && CONFIG_AUTO_RECONNECT
 static void matter_wifi_autoreconnect_thread(void *param)
 {
     int ret = RTW_ERROR;
@@ -311,6 +316,7 @@ void matter_wifi_autoreconnect_hdl(rtw_security_t security_type,
     rtw_create_task(&matter_wifi_autoreconnect_task, (const char *)"matter_wifi_autoreconnect", 512, tskIDLE_PRIORITY + 1, matter_wifi_autoreconnect_thread, &param);
 
 }
+#endif // CONFIG_AUTO_RECONNECT
 
 int matter_wifi_connect(
     char              *ssid,
@@ -497,7 +503,33 @@ int matter_wifi_get_last_error()
 
 void matter_set_autoreconnect(u8 mode)
 {
-    wifi_set_autoreconnect(mode);
+#if defined(CONFIG_AUTO_RECONNECT) && CONFIG_AUTO_RECONNECT
+    size_t ssidLen = 0;
+    unsigned char buf[32];
+    const char kWiFiSSIDKeyName[] = "wifi-ssid";
+
+    memset(buf, 0, sizeof(buf));
+
+    //if wifi-ssid exist in NVS, it has been commissioned before, CHIP will do autoreconnection
+    s32 ret = getPref_bin_new(kWiFiSSIDKeyName, kWiFiSSIDKeyName, buf, sizeof(buf), &ssidLen);
+    if (ret != DCT_SUCCESS)
+    {
+        if(mode == RTW_AUTORECONNECT_DISABLE)
+        {
+            p_wlan_autoreconnect_hdl = NULL;
+        }
+        else
+        {
+            p_wlan_autoreconnect_hdl = matter_wifi_autoreconnect_hdl;
+        }
+#if defined(CONFIG_PLATFORM_8710C)
+        rltk_wlan_set_autoreconnect(WLAN0_NAME, mode, AUTO_RECONNECT_COUNT, AUTO_RECONNECT_INTERVAL);
+#elif defined(CONFIG_PLATFORM_8721D)
+        wext_set_autoreconnect(WLAN0_NAME, mode, AUTO_RECONNECT_COUNT, AUTO_RECONNECT_INTERVAL);
+#endif
+    }
+#endif // CONFIG_AUTO_RECONNECT
+    return;
 }
 
 #if LWIP_VERSION_MAJOR > 2 || LWIP_VERSION_MINOR > 0

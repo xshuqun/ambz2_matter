@@ -22,6 +22,8 @@ static void example_matter_task_thread(void *pvParameters)
         //waiting for Wifi to be initialized
     }
 
+    wifi_set_autoreconnect(0); //Disable default autoreconnect
+
 #if defined(CONFIG_ENABLE_AMEBA_DLOG) && (CONFIG_ENABLE_AMEBA_DLOG == 1)
     fault_handler_override(matter_fault_log, matter_bt_log);
     int res = matter_fs_init();

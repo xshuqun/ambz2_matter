@@ -232,6 +232,8 @@ CHIP_ERROR matter_core_start()
     auto & instance = AmebaLogRedirectHandler::GetInstance();
     instance.InitAmebaLogSubsystem();
 #endif
+
+    wifi_set_autoreconnect(0); //Disable default autoreconnect
     matter_timer_init();
     return matter_core_init();
     // matter_core_init_server();
