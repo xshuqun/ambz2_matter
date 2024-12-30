@@ -30,7 +30,6 @@ static void example_matter_task_thread(void *pvParameters)
     if(res == 0)
     {
         printf("\nMatter FlashFS Initialized\n");
-        matter_read_last_fault_log();
     }
 #endif
 

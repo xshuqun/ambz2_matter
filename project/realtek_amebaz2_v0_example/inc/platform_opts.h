@@ -63,13 +63,6 @@
 #define BT_WHITELIST_BASE_2		(BT_WHITELIST_BASE_1 + BT_WHITELIST_PAGE_SIZE)
 
 /**
-* For Fault Message Redirection
-*/
-#define FAULT_LOG1				(0x200000 - 0x64000) //Store fault log (Reserved max size: 8K)
-#define FAULT_LOG2				(0x200000 - 0x66000) //Store backtrace log (Reserved max size: 8K)
-#define FAULT_FLASH_SECTOR_SIZE	(6*1024)
-
-/**
  * For Wlan configurations
  */
 #define CONFIG_WLAN		1
@@ -465,14 +458,14 @@
 #undef DCT_BEGIN_ADDR
 #undef DCT_BEGIN_ADDR2
 #undef MATTER_FACTORY_DATA
-#define FAST_RECONNECT_DATA		(0x400000 - 0x1000)  // 0x3FF000
-#define BT_FTL_PHY_ADDR0		(0x400000 - 0x2000)  // 0x3FE000
-#define BT_FTL_PHY_ADDR1		(0x400000 - 0x3000)  // 0x3FD000
-#define BT_FTL_BKUP_ADDR		(0x400000 - 0x4000)  // 0x3FC000
-#define UART_SETTING_SECTOR		(0x400000 - 0x5000)  // 0x3FB000
-#define DCT_BEGIN_ADDR			(0x400000 - 0x13000) // 0x3ED000 ~ 0x3FB000 : 56K 
-#define DCT_BEGIN_ADDR2 		(0x400000 - 0x1A000) // 0x3E6000 ~ 0x3ED000 : 24K
-#define MATTER_FACTORY_DATA     (0x3FF000)           // last 4KB of external flash - write protection is supported in this region
+#define FAST_RECONNECT_DATA         (0x400000 - 0x1000)  // 0x3FF000
+#define BT_FTL_PHY_ADDR0            (0x400000 - 0x2000)  // 0x3FE000
+#define BT_FTL_PHY_ADDR1            (0x400000 - 0x3000)  // 0x3FD000
+#define BT_FTL_BKUP_ADDR            (0x400000 - 0x4000)  // 0x3FC000
+#define UART_SETTING_SECTOR         (0x400000 - 0x5000)  // 0x3FB000
+#define DCT_BEGIN_ADDR              (0x400000 - 0x13000) // 0x3ED000 ~ 0x3FB000 : 56K 
+#define DCT_BEGIN_ADDR2             (0x400000 - 0x1A000) // 0x3E6000 ~ 0x3ED000 : 24K
+#define MATTER_FACTORY_DATA         (0x3FF000)           // last 4KB of external flash - write protection is supported in this region
 
 /**
  * CONFIG_ENABLE_AMEBA_DLOG==1: to support diagnosic logs.
@@ -505,16 +498,10 @@
 #endif /* CONFIG_ENABLE_AMEBA_DLOG */
 
 #if defined(CONFIG_ENABLE_AMEBA_LFS) && (CONFIG_ENABLE_AMEBA_LFS == 1)
-#define CONFIG_USE_FLASHCFG 1
+#define CONFIG_USE_FLASHCFG         1
 #define LFS_DEVICE_SIZE             (0x20000)
 #define LFS_FLASH_BASE_ADDR         (DCT_BEGIN_ADDR2 - LFS_DEVICE_SIZE)
 #define LFS_NUM_BLOCKS              (LFS_DEVICE_SIZE / SECTOR_SIZE_FLASH)
-
-// redefine fault message redirection flash address
-#undef FAULT_LOG1
-#undef FAULT_LOG2
-#define FAULT_LOG1                  (LFS_FLASH_BASE_ADDR - 0x1000)
-#define FAULT_LOG2                  (LFS_FLASH_BASE_ADDR - 0x2000)
 #endif /* CONFIG_ENABLE_AMEBA_LFS */
 
 #endif /* CHIP_PROJECT */

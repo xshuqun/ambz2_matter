@@ -225,7 +225,6 @@ CHIP_ERROR matter_core_start()
     if(res == 0)
     {
         ChipLogProgress(DeviceLayer, "Matter FlashFS Initialized");
-        matter_read_last_fault_log();
     }
 
     // register log redirection

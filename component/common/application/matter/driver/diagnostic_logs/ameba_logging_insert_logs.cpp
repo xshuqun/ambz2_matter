@@ -57,6 +57,26 @@ _WEAK void matter_insert_network_log(uint8_t* data, uint32_t data_len)
     }
 }
 
+_WEAK void matter_insert_crash_log(uint8_t* data, uint32_t data_len)
+{
+    lfs_file_t* fp = chip::app::Clusters::DiagnosticLogs::AmebaDiagnosticLogsProvider::GetFpCrashLog();
+    int res;
+    uint unused_writecount = 0;
+
+    ChipLogProgress(DeviceLayer, "Copy Crash log.....");
+
+    res = matter_fs_fwrite(fp, data, data_len, &unused_writecount); // write to FS
+    if (res >= 0)
+    {
+        ChipLogProgress(DeviceLayer, "Wrote %d bytes to Crashlog", unused_writecount);
+    }
+    else
+    {
+        ChipLogError(DeviceLayer, "Write error! %d", res);
+        return;
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif
