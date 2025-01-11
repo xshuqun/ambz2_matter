@@ -365,6 +365,27 @@ void bt_mesh_device_matter_app_handle_conn_state_evt(uint8_t conn_id, T_GAP_CONN
     {
     case GAP_CONN_STATE_DISCONNECTED:
         {
+#if defined(CONFIG_ENABLE_AMEBA_DLOG) && (CONFIG_ENABLE_AMEBA_DLOG == 1)
+            int written;
+            size_t dataSize = 512;
+
+            u8 *data = malloc(dataSize);
+            if (data == NULL) {
+                printf("%s: malloc failed!\n", __FUNCTION__);
+                return;
+            }
+
+            written = snprintf((char *)data, dataSize, "[AMB] BT Disconnected, cause 0x%x\n", disc_cause);
+
+            if (written < 0 || written >= dataSize) {
+                free(data);
+                return;
+            }
+
+            matter_insert_network_log(data, written);
+
+            free(data);
+#endif
             if ((disc_cause != (HCI_ERR | HCI_ERR_REMOTE_USER_TERMINATE))
                 && (disc_cause != (HCI_ERR | HCI_ERR_LOCAL_HOST_TERMINATE)))
                 {

@@ -448,6 +448,12 @@ uint8_t LwIP_DHCP(uint8_t idx, uint8_t dhcp_state)
 					error_flag = RTW_DHCP_FAIL;
 #endif
 
+#ifdef CHIP_PROJECT
+#if defined(CONFIG_ENABLE_AMEBA_DLOG) && (CONFIG_ENABLE_AMEBA_DLOG == 1)
+					matter_wifi_report_callback();
+#endif
+#endif
+
 #if CONFIG_ETHERNET
                     if(idx == NET_IF_NUM -1) // This is the ethernet interface, set it up for static ip address
                        netif_set_up(pnetif);

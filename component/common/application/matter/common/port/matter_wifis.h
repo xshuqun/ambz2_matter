@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #include <wifi_conf.h>
+#include <wifi_structures.h>
 #include <lwip_netconf.h>
 
 #define JOIN_HANDSHAKE_DONE (uint32_t)(1 << 7)
@@ -43,6 +44,9 @@ void matter_wifi_autoreconnect_hdl(
     char *password, int password_len,
     int key_id);
 void matter_set_autoreconnect(u8 mode);
+#if defined(CONFIG_ENABLE_AMEBA_DLOG) && (CONFIG_ENABLE_AMEBA_DLOG == 1)
+int matter_wifi_report_callback(void);
+#endif
 int matter_wifi_connect(
     char              *ssid,
     rtw_security_t    security_type,

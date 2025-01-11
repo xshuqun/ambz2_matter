@@ -440,7 +440,7 @@ static void wifi_rx_mgnt_hdl(char *buf, int buf_len, int flags, void *userdata)
 	case 0x10:
 		//Assoc frame: MAC_hdr(24) + Cap_info(2) + status_code(2)
 		status_code = (u16)(*(u16 *)(buf + 24 + 2));
-		if (rtw_join_status == JOIN_CONNECTING && status_code != 0) {
+		if (rtw_join_status & JOIN_CONNECTING && status_code != 0) {
 			sta_conn_status.assoc_code = status_code;
 			printf("Recv AssocRsp with status_code=%d\n", status_code);
 		}
@@ -448,7 +448,7 @@ static void wifi_rx_mgnt_hdl(char *buf, int buf_len, int flags, void *userdata)
 	case 0xa0:
 		//Disassoc frame: MAC_hdr(24) + status_code(2)
 		status_code = (u16)(*(u16 *)(buf + 24));
-		if (rtw_join_status == JOIN_CONNECTING && status_code != 0) {
+		if (rtw_join_status & JOIN_CONNECTING && status_code != 0) {
 			sta_conn_status.disassoc_code = status_code;
 			printf("Recv Disassoc with status_code=%d\n", status_code);
 		}
@@ -467,7 +467,7 @@ static void wifi_rx_mgnt_hdl(char *buf, int buf_len, int flags, void *userdata)
 	case 0xc0:
 		//Deauth frame: MAC_hdr(24) + status_code(2)
 		status_code = (u16)(*(u16 *)(buf + 24));
-		if (rtw_join_status == JOIN_CONNECTING && status_code != 0) {
+		if (rtw_join_status & JOIN_CONNECTING && status_code != 0) {
 			sta_conn_status.disassoc_code = status_code;
 			printf("Recv Deauth with status_code=%d\n", status_code);
 		}

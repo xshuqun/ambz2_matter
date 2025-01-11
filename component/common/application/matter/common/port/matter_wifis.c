@@ -14,6 +14,9 @@
 #include "chip_porting.h"
 #include "osdep_service.h"
 
+extern struct rtw_connection_info sta_conn_status;
+extern int error_flag;
+
 u32 apNum = 0; // no of total AP scanned
 u8 matter_wifi_trigger = 0;
 static rtw_scan_result_t matter_userdata[65] = {0};
@@ -259,14 +262,8 @@ static void matter_wifi_autoreconnect_thread(void *param)
     }
 #endif
 
-    if(assoc_by_bssid){
-        ret = wifi_connect_bssid(saved_bssid, reconnect_param->ssid, reconnect_param->security_type,
-                                    reconnect_param->password, ETH_ALEN, reconnect_param->ssid_len, reconnect_param->password_len, reconnect_param->key_id, NULL);
-    }
-    else{
-        ret = wifi_connect(reconnect_param->ssid, reconnect_param->security_type, reconnect_param->password,
+    ret = matter_wifi_connect(reconnect_param->ssid, reconnect_param->security_type, reconnect_param->password,
                             reconnect_param->ssid_len, reconnect_param->password_len, reconnect_param->key_id, NULL);
-    }
 
 #if defined(CONFIG_SAE_SUPPORT) && (CONFIG_ENABLE_WPS==1)
     if(is_wpa3_disable)
@@ -312,6 +309,46 @@ void matter_wifi_autoreconnect_hdl(rtw_security_t security_type,
 
 }
 
+#if defined(CONFIG_ENABLE_AMEBA_DLOG) && (CONFIG_ENABLE_AMEBA_DLOG == 1)
+int matter_wifi_report_callback(void)
+{
+    int written;
+    size_t dataSize = 512;
+
+    u8 *data = malloc(dataSize);
+    if (data == NULL) {
+        printf("%s: malloc failed!\n", __FUNCTION__);
+        return -1;
+    }
+
+    if (error_flag == RTW_UNKNOWN || error_flag == RTW_NO_ERROR) {
+        written = snprintf((char *)data, dataSize,
+                            "[AMB] WiFi Connection success, rtw_join_status=0x%X, error_flag=%d\n",
+                            rtw_join_status, error_flag);
+    } else if (error_flag == RTW_DHCP_FAIL) {
+        written = snprintf((char *)data, dataSize,
+                            "[AMB] DHCP failed, error_flag=%d\n", error_flag);
+    } else {
+        written = snprintf((char *)data, dataSize,
+                            "[AMB] WiFi Connection failed, rtw_join_status=0x%X, error_flag = %d, auth_code=%d, assoc_code=%d, disassoc_code=%d\n",
+                            rtw_join_status, error_flag,
+                            sta_conn_status.auth_code, sta_conn_status.assoc_code, sta_conn_status.disassoc_code);
+    }
+
+    if (written < 0 || written >= dataSize) {
+        printf("%s: Buffer overflow\n", __FUNCTION__);
+        free(data);
+        return -1;
+    }
+
+    //printf("Stored Data: \n%s", data);
+    matter_insert_network_log(data, written);
+
+    free(data);
+    return 0;
+}
+#endif
+
 int matter_wifi_connect(
     char              *ssid,
     rtw_security_t    security_type,
@@ -354,6 +391,12 @@ int matter_wifi_connect(
     matter_wifi_trigger = 1;
     matter_set_autoreconnect(1);
     err = wifi_connect(ssid, security_type, password, strlen(ssid), strlen(password), key_id, NULL);
+
+#if defined(CONFIG_ENABLE_AMEBA_DLOG) && (CONFIG_ENABLE_AMEBA_DLOG == 1)
+    if (matter_wifi_report_callback() != 0) {
+        printf("matter_wifi_report_callback failed\n");
+    }
+#endif
 
     return err;
 }
