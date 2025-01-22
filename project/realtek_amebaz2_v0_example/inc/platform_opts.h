@@ -486,8 +486,6 @@
 #define CONFIG_AMEBA_LOG_FILENAME_MAXSZ     32
 #endif /* CONFIG_ENABLE_AMEBA_SHORT_LOGGING */
 
-#define RETAIN_NLOGS_WHEN_FULL      40 // most recent N logs will be kept, the rest cleared
-
 #undef SECTOR_SIZE_FLASH
 #undef FAULT_FLASH_SECTOR_SIZE
 #define SECTOR_SIZE_FLASH           4096
