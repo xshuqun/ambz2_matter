@@ -475,28 +475,14 @@ int matter_wifi_get_network_mode(rtw_network_mode_t *pmode)
     return wifi_get_network_mode(pmode);
 }
 
-int matter_wifi_get_security_type(uint8_t wlan_idx, uint16_t *alg, uint8_t *key_idx, uint8_t *passphrase)
+int matter_wifi_get_security_type(uint32_t *alg)
 {
-    switch(wlan_idx)
-    {
-        case(WLAN0_IDX):
-        {
-            if (wext_get_enc_ext(WLAN0_NAME, alg, key_idx, passphrase) < 0)
-            {
-                return RTW_ERROR;
-            }
-            break;
-        }
-        case(WLAN1_IDX):
-        {
-            if (wext_get_enc_ext(WLAN1_NAME, alg, key_idx, passphrase) < 0)
-            {
-                return RTW_ERROR;
-            }
-            break;
-        }
+    rtw_wifi_setting_t setting;
+    int ret = wifi_get_setting((const char *)WLAN0_NAME, &setting);
+    if (ret == RTW_SUCCESS) {
+        *alg = setting.security_type;
     }
-    return RTW_SUCCESS;
+    return ret;
 }
 
 int matter_wifi_get_wifi_channel_number(uint8_t wlan_idx, uint8_t *ch)
