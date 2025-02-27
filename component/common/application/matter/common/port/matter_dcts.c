@@ -893,7 +893,7 @@ int matter_dct1_check_signature_and_module_name(flash_t *flash, uint32_t address
 
     // Read the buffer from backup address
     device_mutex_lock(RT_DEV_LOCK_FLASH);
-    flash_stream_read(flash, address + (mod_num * BUFFER_SIZE), BUFFER_SIZE, buffer);
+    flash_stream_read(flash, address + ((mod_num * ENABLE_BACKUP) * BUFFER_SIZE), BUFFER_SIZE, buffer);
     device_mutex_unlock(RT_DEV_LOCK_FLASH);
 
     // Check DCT signature and module name
@@ -901,9 +901,11 @@ int matter_dct1_check_signature_and_module_name(flash_t *flash, uint32_t address
 
     if (expected_name != NULL) {
         result = (strncmp((const char *)buffer, "DCT1", 4) == 0 &&
-                  strncmp((const char *)(buffer + MODULE_NAME_OFFSET), expected_name, strlen(expected_name)) == 0);
+                  strncmp((const char *)(buffer + MODULE_NAME_OFFSET), expected_name, strlen(expected_name)) == 0 &&
+                  memcmp(buffer[MODULE_NUM_OFFSET], mod_num, sizeof(mod_num)) == 0);
     } else {
-        result = (strncmp((const char *)buffer, "DCT1", 4) == 0);
+        result = (strncmp((const char *)buffer, "DCT1", 4) == 0 &&
+                  memcmp(buffer[MODULE_NUM_OFFSET], mod_num, sizeof(mod_num)) == 0);
     }
 
     rtw_free(buffer);
@@ -922,7 +924,7 @@ int matter_dct2_check_signature_and_module_name(flash_t *flash, uint32_t address
 
     // Read the buffer from flash memory
     device_mutex_lock(RT_DEV_LOCK_FLASH);
-    flash_stream_read(flash, address + (mod_num * BUFFER_SIZE), BUFFER_SIZE, buffer);
+    flash_stream_read(flash, address + ((mod_num * ENABLE_BACKUP) * BUFFER_SIZE), BUFFER_SIZE, buffer);
     device_mutex_unlock(RT_DEV_LOCK_FLASH);
 
     // Check DCT signature and module name
@@ -930,10 +932,12 @@ int matter_dct2_check_signature_and_module_name(flash_t *flash, uint32_t address
 
     if (expected_name != NULL) {
         result = (strncmp((const char *)buffer, "DCT2", 4) == 0 &&
-                  strncmp((const char *)(buffer + MODULE_NAME_OFFSET), expected_name, strlen(expected_name)) == 0);
+                  strncmp((const char *)(buffer + MODULE_NAME_OFFSET), expected_name, strlen(expected_name)) == 0 &&
+                  memcmp(buffer[MODULE_NUM_OFFSET], mod_num, sizeof(mod_num)) == 0);
     }
     else {
-        result = (strncmp((const char *)buffer, "DCT2", 4) == 0);
+        result = (strncmp((const char *)buffer, "DCT2", 4) == 0 &&
+                  memcmp(buffer[MODULE_NUM_OFFSET], mod_num, sizeof(mod_num)) == 0);
     }
 
     rtw_free(buffer);
