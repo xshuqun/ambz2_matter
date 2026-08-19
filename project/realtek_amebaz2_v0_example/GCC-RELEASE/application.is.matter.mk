@@ -409,13 +409,13 @@ SRC_C += ../../../component/common/utilities/xml.c
 SRC_C += ../../../component/common/utilities/gb2unicode.c
 
 #matter - app
-SRC_C += ../../../component/common/application/matter/common/port/matter_dcts.c
-SRC_C += ../../../component/common/application/matter/common/port/matter_ota.c
-SRC_C += ../../../component/common/application/matter/common/port/matter_timers.c
-SRC_C += ../../../component/common/application/matter/common/port/matter_utils.c
-SRC_C += ../../../component/common/application/matter/common/port/matter_wifis.c
-SRC_C += ../../../component/common/application/matter/example/chiptest/example_matter.c
-SRC_C += ../../../component/common/application/matter/common/atcmd/atcmd_matter.c
+#SRC_C += ../../../component/common/application/matter/common/port/matter_dcts.c
+#SRC_C += ../../../component/common/application/matter/common/port/matter_ota.c
+#SRC_C += ../../../component/common/application/matter/common/port/matter_timers.c
+#SRC_C += ../../../component/common/application/matter/common/port/matter_utils.c
+#SRC_C += ../../../component/common/application/matter/common/port/matter_wifis.c
+#SRC_C += ../../../component/common/application/matter/example/chiptest/example_matter.c
+#SRC_C += ../../../component/common/application/matter/common/atcmd/atcmd_matter.c
 SRC_C += ../../../component/common/application/matter/common/mbedtls/net_sockets.c
 
 #network - app - mqtt
@@ -774,8 +774,8 @@ ifdef BLE_MATTER_ADAPTER
 CFLAGS += -DCONFIG_BLE_MATTER_ADAPTER=1
 endif
 
-CFLAGS += -DCHIP_PROJECT=0
-CFLAGS += -DCONFIG_ENABLE_OTA_REQUESTOR=1
+#CFLAGS += -DCHIP_PROJECT=0
+#CFLAGS += -DCONFIG_ENABLE_OTA_REQUESTOR=1
 CFLAGS += -DCONFIG_ENABLE_MATTER_PRNG=0
 CFLAGS += -DCONFIG_ENABLE_FACTORY_DATA_ENCRYPTION=0
 CFLAGS += -DCONFIG_ENABLE_DCT_ENCRYPTION=0
@@ -833,7 +833,7 @@ all: LIBFLAGS += -Wl,--start-group -L../../../component/soc/realtek/8710c/misc/b
 mp: LIBFLAGS += -Wl,--start-group -L../../../component/soc/realtek/8710c/misc/bsp/lib/common/GCC -l_soc_is -l_wlan_mp -Wl,--end-group
 LIBFLAGS += -L../../../component/soc/realtek/8710c/misc/bsp/lib/common/GCC -l_http -l_dct -l_eap -l_p2p -l_websocket -l_wps -l_mdns
 #LIBFLAGS += -L../../../component/soc/realtek/8710c/misc/bsp/lib/common/GCC -l_coap
-LIBFLAGS += -Wl,--start-group -L../../../component/soc/realtek/8710c/misc/bsp/lib/common/GCC -Wl,--whole-archive -l_main -Wl,--no-whole-archive -lCHIP -Wl,--end-group # --whole-archive forces linker to override weak functions with strong ones
+#LIBFLAGS += -Wl,--start-group -L../../../component/soc/realtek/8710c/misc/bsp/lib/common/GCC -Wl,--whole-archive -l_main -Wl,--no-whole-archive -lCHIP -Wl,--end-group # --whole-archive forces linker to override weak functions with strong ones
  
 
 RAMALL_BIN =
