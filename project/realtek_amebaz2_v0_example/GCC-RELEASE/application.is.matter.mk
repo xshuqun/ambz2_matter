@@ -32,7 +32,8 @@ OBJDUMP = $(CROSS_COMPILE)objdump
 
 OS := $(shell uname)
 
-LDSCRIPT := ./rtl8710c_ram_matter.ld
+LDSCRIPT := ./rtl8710c_ram.ld
+
 
 # Initialize target name and target object files
 # -------------------------------------------------------------------
@@ -750,7 +751,7 @@ CFLAGS =
 CFLAGS += -march=armv8-m.main+dsp -mthumb -mcmse -mfloat-abi=soft -D__thumb2__ -g -gdwarf-3 -Os
 CFLAGS += -D__ARM_ARCH_8M_MAIN__=1 -gdwarf-3 -fstack-usage -fdata-sections -ffunction-sections 
 CFLAGS += -fdiagnostics-color=always -Wall -Wpointer-arith -Wundef -Wno-write-strings --save-temps
-CFLAGS += -Wno-maybe-uninitialized -c -MMD
+CFLAGS += -Wno-maybe-uninitialized -c -MMD -fsigned-char
 CFLAGS += -DCONFIG_PLATFORM_8710C -DCONFIG_BUILD_RAM=1
 CFLAGS += -DV8M_STKOVF
 
@@ -764,27 +765,10 @@ else
 CFLAGS += -DCONFIG_SYSTEM_TIME64=0
 endif
 
-# for matter mesh
-ifdef BT_MATTER_MESH_ADAPTER
-CFLAGS += -DCONFIG_BT_MESH_WITH_MATTER=1
-endif
-
-# for matter adapter
-ifdef BLE_MATTER_ADAPTER
-CFLAGS += -DCONFIG_BLE_MATTER_ADAPTER=1
-endif
-
-#CFLAGS += -DCHIP_PROJECT=0
-#CFLAGS += -DCONFIG_ENABLE_OTA_REQUESTOR=1
-CFLAGS += -DCONFIG_ENABLE_MATTER_PRNG=0
-CFLAGS += -DCONFIG_ENABLE_FACTORY_DATA_ENCRYPTION=0
-CFLAGS += -DCONFIG_ENABLE_DCT_ENCRYPTION=0
 CFLAGS += -DMBEDTLS_CONFIG_FILE=\"mbedtls_config.h\"
 
-CPPFLAGS := $(CFLAGS)
-CPPFLAGS += -fno-use-cxa-atexit
-CPPFLAGS += -std=c++14
-CPPFLAGS += -fno-rtti
+CFLAGS += -Wstrict-prototypes 
+CPPFLAGS += -std=c++11 -fno-use-cxa-atexit
 
 LFLAGS = 
 LFLAGS += -Os -march=armv8-m.main+dsp -mthumb -mcmse -mfloat-abi=soft -nostartfiles -nodefaultlibs -nostdlib -specs=nosys.specs
@@ -803,12 +787,12 @@ LFLAGS += -Wl,-wrap,atoui   -Wl,-wrap,atol     -Wl,-wrap,atoul
 LFLAGS += -Wl,-wrap,atoull  -Wl,-wrap,atof
 LFLAGS += -Wl,-wrap,malloc  -Wl,-wrap,realloc
 LFLAGS += -Wl,-wrap,calloc  -Wl,-wrap,free
-LFLAGS += -Wl,-wrap,_malloc_r  -Wl,-wrap,_calloc_r
+LFLAGS += -Wl,-wrap,_malloc_r  -Wl,-wrap,_calloc_r  -Wl,-wrap,_realloc_r  -Wl,-wrap,_free_r
 LFLAGS += -Wl,-wrap,memcmp  -Wl,-wrap,memcpy
 LFLAGS += -Wl,-wrap,memmove -Wl,-wrap,memset
 LFLAGS += -Wl,-wrap,printf  -Wl,-wrap,sprintf
 LFLAGS += -Wl,-wrap,puts  -Wl,-wrap,putc -Wl,-wrap,putchar
-#LFLAGS += -Wl,-wrap,snprintf  -Wl,-wrap,vsnprintf
+LFLAGS += -Wl,-wrap,snprintf  -Wl,-wrap,vsnprintf
 LFLAGS += -Wl,-wrap,aesccmp_construct_mic_iv
 LFLAGS += -Wl,-wrap,aesccmp_construct_mic_header1
 LFLAGS += -Wl,-wrap,aesccmp_construct_ctr_preload
@@ -846,7 +830,7 @@ include toolchain.mk
 
 .PHONY: application_is
 application_is: prerequirement $(SRC_O) $(SRAM_O) $(ERAM_O) $(SRC_OO)
-	$(LD) $(LFLAGS) -o $(BIN_DIR)/$(TARGET).axf $(OBJ_CPP_LIST) $(OBJ_LIST) $(ROMIMG) $(LIBFLAGS) -lstdc++ -T$(LDSCRIPT)
+	$(LD) $(LFLAGS) -o $(BIN_DIR)/$(TARGET).axf $(OBJ_CPP_LIST) -lstdc++ $(OBJ_LIST) $(ROMIMG) $(LIBFLAGS) -T$(LDSCRIPT)  
 	$(OBJCOPY) -j .bluetooth_trace.text -Obinary $(BIN_DIR)/$(TARGET).axf $(BIN_DIR)/APP.trace
 	$(OBJCOPY) -R .bluetooth_trace.text $(BIN_DIR)/$(TARGET).axf 
 	$(OBJDUMP) -d $(BIN_DIR)/$(TARGET).axf > $(BIN_DIR)/$(TARGET).asm
